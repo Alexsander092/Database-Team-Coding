@@ -1,65 +1,65 @@
-# Oracle Version Control
+# Database Team Coding
 
-Oracle Version Control È um sistema de controle de vers„o para objetos Oracle, desenvolvido em .NET MAUI (.NET 9), com interface moderna e integraÁ„o a banco de dados Oracle. O sistema permite gerenciar check-in/check-out de objetos, visualizar status, baixar DDLs e manter histÛrico de alteraÁıes.
+Oracle Version Control √© um sistema de controle de vers√£o para objetos Oracle, desenvolvido em .NET MAUI (.NET 9), com interface moderna e integra√ß√£o a banco de dados Oracle. O sistema permite gerenciar check-in/check-out de objetos, visualizar status, baixar DDLs e manter hist√≥rico de altera√ß√µes.
 
 ## Funcionalidades
-- Login seguro com armazenamento de configuraÁıes
-- Listagem, busca e paginaÁ„o de objetos versionados
+- Login seguro com armazenamento de configura√ß√µes
+- Listagem, busca e pagina√ß√£o de objetos versionados
 - Check-out e check-in de objetos Oracle
 - Download do DDL do objeto selecionado
-- VisualizaÁ„o de detalhes do objeto
-- OrdenaÁ„o e filtragem por m˙ltiplos campos
+- Visualiza√ß√£o de detalhes do objeto
+- Ordena√ß√£o e filtragem por m√∫ltiplos campos
 - Interface responsiva e moderna
 
 ## Estrutura do Projeto
 - **Views**: Telas (LoginPage, MainPage, ObjectDetailPage)
-- **ViewModels**: LÛgica de apresentaÁ„o (LoginViewModel, MainViewModel, ObjectDetailViewModel)
-- **Models**: RepresentaÁ„o dos dados (VersionedObject)
-- **Services**: ServiÁos de acesso a dados e configuraÁıes (OracleService, SettingsService)
-- **Resources**: Õcones, splash, etc.
+- **ViewModels**: L√≥gica de apresenta√ß√£o (LoginViewModel, MainViewModel, ObjectDetailViewModel)
+- **Models**: Representa√ß√£o dos dados (VersionedObject)
+- **Services**: Servi√ßos de acesso a dados e configura√ß√µes (OracleService, SettingsService)
+- **Resources**: √çcones, splash, etc.
 
 ## Fluxo de Uso
-1. **Login**: Usu·rio informa credenciais e configuraÁıes Oracle.
-2. **MainPage**: ApÛs login, exibe lista de objetos versionados, com busca, ordenaÁ„o e paginaÁ„o.
-3. **Check-out/Check-in**: Usu·rio pode reservar (check-out) ou liberar (check-in) objetos, sempre com coment·rio obrigatÛrio.
-4. **Detalhes**: Ao selecionar um objeto, È possÌvel ver detalhes e baixar o DDL.
-5. **Logout**: Encerra a sess„o e retorna ao login.
+1. **Login**: Usu√°rio informa credenciais e configura√ß√µes Oracle.
+2. **MainPage**: Ap√≥s login, exibe lista de objetos versionados, com busca, ordena√ß√£o e pagina√ß√£o.
+3. **Check-out/Check-in**: Usu√°rio pode reservar (check-out) ou liberar (check-in) objetos, sempre com coment√°rio obrigat√≥rio.
+4. **Detalhes**: Ao selecionar um objeto, √© poss√≠vel ver detalhes e baixar o DDL.
+5. **Logout**: Encerra a sess√£o e retorna ao login.
 
-## Diagrama de Fluxo e InteraÁ„o de Camadas
+## Architecture Overview
 
-```mermaid
-graph TD
-    subgraph UI (Views)
-        LoginPage -->|Binding| LoginViewModel
-        MainPage -->|Binding| MainViewModel
-        ObjectDetailPage -->|Binding| ObjectDetailViewModel
+flowchart TD
+    subgraph UI["UI (Views)"]
+        A[LoginPage] -->|Binding| B[LoginViewModel]
+        C[MainPage] -->|Binding| D[MainViewModel]
+        E[ObjectDetailPage] -->|Binding| F[ObjectDetailViewModel]
     end
 
-    subgraph ViewModels
-        LoginViewModel -->|Usa| OracleService
-        LoginViewModel -->|Usa| SettingsService
-        MainViewModel -->|Usa| OracleService
-        ObjectDetailViewModel -->|Usa| OracleService
+    subgraph ViewModels["ViewModels"]
+        B -->|Uses| G[OracleService]
+        B -->|Uses| H[SettingsService]
+        D -->|Uses| G
+        F -->|Uses| G
     end
 
-    subgraph Services
-        OracleService -->|Acessa| OracleDB
-        SettingsService -->|Acessa| Arquivo INI
+    subgraph Services["Services"]
+        G -->|Connects to| I[[Oracle Database]]
+        H -->|Reads/Writes| J[[settings.ini]]
     end
 
-    MainViewModel -->|Manipula| VersionedObject
-    ObjectDetailViewModel -->|Manipula| VersionedObject
+    D -->|Manages| K[VersionedObject]
+    F -->|Manages| K
 
-    OracleDB((Oracle Database))
-    Arquivo INI((settings.ini))
-```
+    classDef box fill:#f9f9f9,stroke:#333,stroke-width:2px;
+    classDef db fill:#e6f3ff,stroke:#0066cc,stroke-width:2px;
+    class I,J db;
+    class UI,ViewModels,Services box;
 
 ## Principais Classes e Responsabilidades
-- **LoginViewModel**: Gerencia autenticaÁ„o, carrega/salva configuraÁıes.
-- **MainViewModel**: Gerencia listagem, busca, paginaÁ„o, check-in/out e download de objetos.
+- **LoginViewModel**: Gerencia autentica√ß√£o, carrega/salva configura√ß√µes.
+- **MainViewModel**: Gerencia listagem, busca, pagina√ß√£o, check-in/out e download de objetos.
 - **ObjectDetailViewModel**: Exibe detalhes do objeto selecionado.
-- **OracleService**: Conex„o, queries e procedimentos Oracle (check-in/out, busca, DDL).
-- **SettingsService**: PersistÍncia de configuraÁıes locais.
+- **OracleService**: Conex√£o, queries e procedimentos Oracle (check-in/out, busca, DDL).
+- **SettingsService**: Persist√™ncia de configura√ß√µes locais.
 - **VersionedObject**: Modelo de dados dos objetos versionados.
 
 ## Requisitos
@@ -68,11 +68,11 @@ graph TD
 - Oracle.ManagedDataAccess
 - UraniumUI (UI)
 
-## ObservaÁıes
-- O projeto n„o altera objetos Oracle sem check-out prÈvio.
-- Coment·rios s„o obrigatÛrios para check-in/out.
-- ConfiguraÁıes s„o salvas em arquivo local (settings.ini).
+## Observa√ß√µes
+- O projeto n√£o altera objetos Oracle sem check-out pr√©vio.
+- Coment√°rios s√£o obrigat√≥rios para check-in/out.
+- Configura√ß√µes s√£o salvas em arquivo local (settings.ini).
 
 ---
 
-> **Este README e fluxograma foram gerados automaticamente a partir do cÛdigo-fonte.**
+> **Este README e fluxograma foram gerados automaticamente a partir do c√≥digo-fonte.**
