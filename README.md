@@ -49,10 +49,12 @@ flowchart TD
     MainViewModel -->|Manages| VersionedObject
     ObjectDetailViewModel -->|Manages| VersionedObject
 
-    classDef box fill:#f9f9f9,stroke:#333,stroke-width:2px;
-    classDef db fill:#e6f3ff,stroke:#0066cc,stroke-width:2px;
+    classDef box fill:#333,stroke:#ddd,stroke-width:2px,color:white;
+    classDef db fill:#222,stroke:#444,stroke-width:2px,color:white;
+    classDef node fill:#555,stroke:#777,stroke-width:2px,color:white;
     class OracleDB,SettingsFile db;
     class UI,ViewModels,Services box;
+    class LoginPage,MainPage,ObjectDetailPage,LoginViewModel,MainViewModel,ObjectDetailViewModel,OracleService,SettingsService,VersionedObject node;
 ```
 
 ## Key Classes and Responsibilities
