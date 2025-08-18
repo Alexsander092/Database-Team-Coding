@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Oracle_Version_Control.ViewModels"
+             x:Class="Oracle_Version_Control.Views.LoginPage"
+             Title="Login"
+             NavigationPage.HasNavigationBar="False"
+             x:DataType="vm:LoginViewModel">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+        <!-- Cabeçalho integrado com barra de título -->
+        <Grid Grid.Row="0" BackgroundColor="#0072C6" Padding="0" HeightRequest="56">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Título da Aplicação - centrado na tela -->
+            <Label Grid.Column="1" 
+                   Text="Oracle Team Coding" 
+                   FontSize="20" 
+                   TextColor="White"
+                   VerticalOptions="Center"
+                   HorizontalOptions="Start"
+                   Margin="15,0,0,0"/>
+        </Grid>
+
+        <!-- Conteúdo de Login -->
+        <Border Grid.Row="1"
+                StrokeThickness="0"
+                BackgroundColor="Transparent"
+                MaximumWidthRequest="700"
+                HorizontalOptions="Center"
+                MinimumWidthRequest="700"
+                VerticalOptions="Center">
+            <VerticalStackLayout Spacing="10" 
+                                Padding="20">
+                <Label Text="Informações de Conexão" 
+                       FontSize="18" 
+                       FontAttributes="Bold" 
+                       HorizontalOptions="Center" 
+                       Margin="0,0,0,10"/>
+
+                <Entry Placeholder="Usuário" Text="{Binding Username}" />
+                <Entry x:Name="PasswordEntry" 
+                       Placeholder="Senha" 
+                       Text="{Binding Password}" 
+                       IsPassword="True" 
+                       Completed="OnPasswordCompleted" />
+                <Entry Placeholder="Data Source (TNS Alias)" Text="{Binding DataSource}" />
+
+                <Label Text="Caminho do TNS Admin" FontSize="14" Margin="0,10,0,0"/>
+                <Entry Placeholder="ex: C:\app\user\product\client\network\admin" 
+                       Text="{Binding TnsPath}"
+                       />
+
+                <HorizontalStackLayout Spacing="8" Margin="0,10,0,0">
+                    <CheckBox IsChecked="{Binding SaveCredentials}"
+                              Color="#0072C6" 
+                              VerticalOptions="Center"/>
+                    <Label Text="Salvar informações de conexão" 
+                           FontSize="14"
+                           VerticalOptions="Center" />
+                </HorizontalStackLayout>
+
+                <HorizontalStackLayout Spacing="8" Margin="0,10,0,0">
+                    <CheckBox IsChecked="{Binding AutoLogin}"
+                              Color="#0072C6" 
+                              VerticalOptions="Center"/>
+                    <Label Text="Conectar automaticamente" 
+                           FontSize="14"
+                           VerticalOptions="Center" />
+                </HorizontalStackLayout>
+
+                <Button x:Name="LoginButton"
+                        Text="Login" 
+                        Command="{Binding LoginCommand}" 
+                        BackgroundColor="#0072C6"
+                        TextColor="White"
+                        CornerRadius="5"
+                        Margin="0,20,0,0"/>
+
+                <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+                <Label Text="{Binding ErrorMessage}" TextColor="Red" IsVisible="{Binding HasError}" />
+            </VerticalStackLayout>
+        </Border>
+
+        <!-- Rodapé (opcional) -->
+        <Label Grid.Row="2" 
+               Text="Versão 1.0" 
+               FontSize="12" 
+               TextColor="Gray" 
+               HorizontalOptions="Center" 
+               Margin="0,10,0,10" />
+    </Grid>
+</ContentPage>

@@ -1,0 +1,882 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:Oracle_Version_Control.ViewModels"
+             xmlns:models="clr-namespace:Oracle_Version_Control.Models"
+             x:Class="Oracle_Version_Control.Views.MainPage"
+             NavigationPage.HasNavigationBar="False"
+             Title="Oracle Version Control">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+        <Grid Grid.Row="0" BackgroundColor="#0072C6" Padding="0" HeightRequest="56">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <Label Grid.Column="1" 
+                   Text="Oracle Team Coding" 
+                   FontSize="20" 
+                   TextColor="White"
+                   VerticalOptions="Center"
+                   HorizontalOptions="Start"
+                   Margin="15,0,0,0"/>
+
+            <Label Grid.Column="2" 
+                   Text="{Binding CurrentUser}" 
+                   FontSize="14"
+                   TextColor="White"
+                   VerticalOptions="Center"
+                   Margin="0,0,15,0"/>
+        </Grid>
+
+        <Grid Grid.Row="1" Padding="0" BackgroundColor="#1f1f1f">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="10,10,10,5">
+                <SearchBar Grid.Column="0" 
+                           Placeholder="Pesquisar objetos..."
+                           Margin="0,0,5,0"
+                           Text="{Binding SearchTerm}"
+                           SearchCommand="{Binding SearchCommand}"/>
+                <Picker Grid.Column="1"
+                        WidthRequest="120"
+                        Margin="0,0,5,0"
+                        ItemsSource="{Binding SearchableColumns}"
+                        ItemDisplayBinding="{Binding Display}"
+                        SelectedItem="{Binding SelectedSearchColumn, Mode=TwoWay}"/>
+                <Button x:Name="ReloadButton"
+                        Grid.Column="2" 
+                        Text="&#x21BB;" 
+                        FontSize="18"
+                        WidthRequest="40"
+                        CornerRadius="5"
+                        Command="{Binding ReloadObjectsCommand}"
+                        BackgroundColor="#0072C6"
+                        TextColor="White"/>
+            </Grid>
+
+            <Grid Grid.Row="1" Grid.RowSpan="2" BackgroundColor="#000000" Padding="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="60" />
+                </Grid.RowDefinitions>
+
+                <Grid x:Name="TableHeader" 
+                      Grid.Row="0"
+                      VerticalOptions="Start" 
+                      HeightRequest="40" 
+                      BackgroundColor="#0072C6"
+                      HorizontalOptions="Fill">
+
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*" x:Name="Col1"/>
+                        <ColumnDefinition Width="1*" x:Name="Col2"/>
+                        <ColumnDefinition Width="1*" x:Name="Col3"/>
+                        <ColumnDefinition Width="1*" x:Name="Col4"/>
+                        <ColumnDefinition Width="1*" x:Name="Col5"/>
+                        <ColumnDefinition Width="1*" x:Name="Col6"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Grid Grid.Column="0" BackgroundColor="Transparent">
+                        <Grid.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding SortByCommand}" CommandParameter="Objeto" />
+                        </Grid.GestureRecognizers>
+
+                        <StackLayout Orientation="Horizontal" VerticalOptions="Center" Margin="10,0,0,0">
+                            <Label Text="Nome do objeto" 
+                                  FontAttributes="Bold" 
+                                  TextColor="White"/>
+                            <Label Text="{Binding SortAscending, Converter={StaticResource DirectionSymbolConverter}}" 
+                                  TextColor="White"
+                                  FontSize="14"
+                                  Margin="4,0,0,0"
+                                  IsVisible="{Binding CurrentSortField, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Objeto'}"/>
+                        </StackLayout>
+
+                        <BoxView WidthRequest="1" 
+                                 BackgroundColor="#777777" 
+                                 HorizontalOptions="End" 
+                                 VerticalOptions="Fill"/>
+
+                        <Grid x:Name="Col1Resizer"
+                              WidthRequest="10" 
+                              HeightRequest="40"
+                              BackgroundColor="Transparent" 
+                              HorizontalOptions="End"
+                              VerticalOptions="Center"
+                              InputTransparent="False"
+                              ZIndex="10"
+                              Margin="0,0,0,0"
+                              AutomationId="Col1Resizer">
+                            <BoxView WidthRequest="1" 
+                                     HeightRequest="30" 
+                                     BackgroundColor="#777777" 
+                                     VerticalOptions="Center"
+                                     HorizontalOptions="Center"/>
+                        </Grid>
+                    </Grid>
+
+                    <Grid Grid.Column="1" BackgroundColor="Transparent">
+                        <Grid.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding SortByCommand}" CommandParameter="ObjectType" />
+                        </Grid.GestureRecognizers>
+
+                        <StackLayout Orientation="Horizontal" VerticalOptions="Center" Margin="10,0,0,0">
+                            <Label Text="Tipo" 
+                                  FontAttributes="Bold" 
+                                  TextColor="White"/>
+                            <Label Text="{Binding SortAscending, Converter={StaticResource DirectionSymbolConverter}}" 
+                                  TextColor="White"
+                                  FontSize="14"
+                                  Margin="4,0,0,0"
+                                  IsVisible="{Binding CurrentSortField, Converter={StaticResource StringEqualsConverter}, ConverterParameter='ObjectType'}"/>
+                        </StackLayout>
+
+                        <BoxView WidthRequest="1" 
+                                 BackgroundColor="#777777" 
+                                 HorizontalOptions="End" 
+                                 VerticalOptions="Fill"/>
+
+                        <Grid x:Name="Col2Resizer"
+                              WidthRequest="10" 
+                              HeightRequest="40"
+                              BackgroundColor="Transparent" 
+                              HorizontalOptions="End"
+                              VerticalOptions="Center"
+                              InputTransparent="False"
+                              ZIndex="10"
+                              Margin="0,0,0,0"
+                              AutomationId="Col2Resizer">
+                            <BoxView WidthRequest="1" 
+                                     HeightRequest="30" 
+                                     BackgroundColor="#777777" 
+                                     VerticalOptions="Center"
+                                     HorizontalOptions="Center"/>
+                        </Grid>
+                    </Grid>
+
+                    <Grid Grid.Column="2" BackgroundColor="Transparent">
+                        <Grid.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding SortByCommand}" CommandParameter="Status" />
+                        </Grid.GestureRecognizers>
+
+                        <StackLayout Orientation="Horizontal" VerticalOptions="Center" Margin="10,0,0,0">
+                            <Label Text="Status" 
+                                  FontAttributes="Bold" 
+                                  TextColor="White"/>
+                            <Label Text="{Binding SortAscending, Converter={StaticResource DirectionSymbolConverter}}" 
+                                  TextColor="White"
+                                  FontSize="14"
+                                  Margin="4,0,0,0"
+                                  IsVisible="{Binding CurrentSortField, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Status'}"/>
+                        </StackLayout>
+
+                        <BoxView WidthRequest="1" 
+                                 BackgroundColor="#777777" 
+                                 HorizontalOptions="End" 
+                                 VerticalOptions="Fill"/>
+
+                        <Grid x:Name="Col3Resizer"
+                              WidthRequest="10" 
+                              HeightRequest="40"
+                              BackgroundColor="Transparent" 
+                              HorizontalOptions="End"
+                              VerticalOptions="Center"
+                              InputTransparent="False"
+                              ZIndex="10"
+                              Margin="0,0,0,0"
+                              AutomationId="Col3Resizer">
+                            <BoxView WidthRequest="1" 
+                                     HeightRequest="30" 
+                                     BackgroundColor="#777777" 
+                                     VerticalOptions="Center"
+                                     HorizontalOptions="Center"/>
+                        </Grid>
+                    </Grid>
+
+                    <Grid Grid.Column="3" BackgroundColor="Transparent">
+                        <Grid.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding SortByCommand}" CommandParameter="Usuario" />
+                        </Grid.GestureRecognizers>
+
+                        <StackLayout Orientation="Horizontal" VerticalOptions="Center" Margin="10,0,0,0">
+                            <Label Text="Usuário" 
+                                  FontAttributes="Bold" 
+                                  TextColor="White"/>
+                            <Label Text="{Binding SortAscending, Converter={StaticResource DirectionSymbolConverter}}" 
+                                  TextColor="White"
+                                  FontSize="14"
+                                  Margin="4,0,0,0"
+                                  IsVisible="{Binding CurrentSortField, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Usuario'}"/>
+                        </StackLayout>
+
+                        <BoxView WidthRequest="1" 
+                                 BackgroundColor="#777777" 
+                                 HorizontalOptions="End" 
+                                 VerticalOptions="Fill"/>
+
+                        <Grid x:Name="Col4Resizer"
+                              WidthRequest="10" 
+                              HeightRequest="40"
+                              BackgroundColor="Transparent" 
+                              HorizontalOptions="End"
+                              VerticalOptions="Center"
+                              InputTransparent="False"
+                              ZIndex="10"
+                              Margin="0,0,0,0"
+                              AutomationId="Col4Resizer">
+                            <BoxView WidthRequest="1" 
+                                     HeightRequest="30" 
+                                     BackgroundColor="#777777" 
+                                     VerticalOptions="Center"
+                                     HorizontalOptions="Center"/>
+                        </Grid>
+                    </Grid>
+
+                    <Grid Grid.Column="4" BackgroundColor="Transparent">
+                        <Grid.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding SortByCommand}" CommandParameter="Checkout" />
+                        </Grid.GestureRecognizers>
+
+                        <StackLayout Orientation="Horizontal" VerticalOptions="Center" Margin="10,0,0,0">
+                            <Label Text="Check-out" 
+                                  FontAttributes="Bold" 
+                                  TextColor="White"/>
+                            <Label Text="{Binding SortAscending, Converter={StaticResource DirectionSymbolConverter}}" 
+                                  TextColor="White"
+                                  FontSize="14"
+                                  Margin="4,0,0,0"
+                                  IsVisible="{Binding CurrentSortField, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Checkout'}"/>
+                        </StackLayout>
+
+                        <BoxView WidthRequest="1" 
+                                 BackgroundColor="#777777" 
+                                 HorizontalOptions="End" 
+                                 VerticalOptions="Fill"/>
+
+                        <Grid x:Name="Col5Resizer"
+                              WidthRequest="10" 
+                              HeightRequest="40"
+                              BackgroundColor="Transparent" 
+                              HorizontalOptions="End"
+                              VerticalOptions="Center"
+                              InputTransparent="False"
+                              ZIndex="10"
+                              Margin="0,0,0,0"
+                              AutomationId="Col5Resizer">
+                            <BoxView WidthRequest="1" 
+                                     HeightRequest="30" 
+                                     BackgroundColor="#777777" 
+                                     VerticalOptions="Center"
+                                     HorizontalOptions="Center"/>
+                        </Grid>
+                    </Grid>
+
+                    <Grid Grid.Column="5" BackgroundColor="Transparent">
+                        <Grid.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding SortByCommand}" CommandParameter="Checkin" />
+                        </Grid.GestureRecognizers>
+
+                        <StackLayout Orientation="Horizontal" VerticalOptions="Center" Margin="10,0,0,0">
+                            <Label Text="Check-in" 
+                                  FontAttributes="Bold" 
+                                  TextColor="White"/>
+                            <Label Text="{Binding SortAscending, Converter={StaticResource DirectionSymbolConverter}}" 
+                                  TextColor="White"
+                                  FontSize="14"
+                                  Margin="4,0,0,0"
+                                  IsVisible="{Binding CurrentSortField, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Checkin'}"/>
+                        </StackLayout>
+
+                        <BoxView WidthRequest="1" 
+                                 BackgroundColor="#777777" 
+                                 HorizontalOptions="End" 
+                                 VerticalOptions="Fill"/>
+                    </Grid>
+                </Grid>
+
+                <RefreshView Grid.Row="1"
+                            IsRefreshing="{Binding IsRefreshing}"
+                            Command="{Binding RefreshCommand}"
+                            VerticalOptions="Fill">
+                    <CollectionView x:Name="ObjectsCollectionView"
+                                   ItemsSource="{Binding Objects}" 
+                                   SelectionMode="Single"
+                                   VerticalOptions="Fill"
+                                   VerticalScrollBarVisibility="Default">
+                        <CollectionView.ItemsLayout>
+                            <LinearItemsLayout Orientation="Vertical" ItemSpacing="0" />
+                        </CollectionView.ItemsLayout>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="models:VersionedObject">
+                                <Grid BackgroundColor="{Binding ., Converter={StaticResource AlternatingRowColorConverter}}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="{Binding Source={x:Reference Col1}, Path=Width}" />
+                                        <ColumnDefinition Width="{Binding Source={x:Reference Col2}, Path=Width}" />
+                                        <ColumnDefinition Width="{Binding Source={x:Reference Col3}, Path=Width}" />
+                                        <ColumnDefinition Width="{Binding Source={x:Reference Col4}, Path=Width}" />
+                                        <ColumnDefinition Width="{Binding Source={x:Reference Col5}, Path=Width}" />
+                                        <ColumnDefinition Width="{Binding Source={x:Reference Col6}, Path=Width}" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <Grid Grid.Column="0">
+                                        <Label Text="{Binding Objeto}" 
+                                               LineBreakMode="TailTruncation"
+                                               VerticalOptions="Center"
+                                               Margin="10,10"
+                                               TextColor="{Binding ., Converter={StaticResource AlternatingRowColorConverter}, ConverterParameter='TextColor'}" />
+                                        <BoxView WidthRequest="1" 
+                                                 BackgroundColor="#777777" 
+                                                 HorizontalOptions="End" 
+                                                 VerticalOptions="Fill"/>
+                                    </Grid>
+
+                                    <Grid Grid.Column="1">
+                                        <Label Text="{Binding ObjectType}" 
+                                               LineBreakMode="TailTruncation"
+                                               VerticalOptions="Center"
+                                               Margin="10,10"
+                                               TextColor="{Binding ., Converter={StaticResource AlternatingRowColorConverter}, ConverterParameter='TextColor'}" />
+                                        <BoxView WidthRequest="1" 
+                                                 BackgroundColor="#777777" 
+                                                 HorizontalOptions="End" 
+                                                 VerticalOptions="Fill"/>
+                                    </Grid>
+
+                                    <Grid Grid.Column="2">
+                                        <Label Text="{Binding StatusDisplay}" 
+                                               TextColor="{Binding StatusColor}"
+                                               VerticalOptions="Center"
+                                               Margin="10,10" />
+                                        <BoxView WidthRequest="1" 
+                                                 BackgroundColor="#777777" 
+                                                 HorizontalOptions="End" 
+                                                 VerticalOptions="Fill"/>
+                                    </Grid>
+
+                                    <Grid Grid.Column="3">
+                                        <Label Text="{Binding Usuario}" 
+                                               LineBreakMode="TailTruncation"
+                                               VerticalOptions="Center"
+                                               Margin="10,10"
+                                               TextColor="{Binding ., Converter={StaticResource AlternatingRowColorConverter}, ConverterParameter='TextColor'}" />
+                                        <BoxView WidthRequest="1" 
+                                                 BackgroundColor="#777777" 
+                                                 HorizontalOptions="End" 
+                                                 VerticalOptions="Fill"/>
+                                    </Grid>
+
+                                    <Grid Grid.Column="4">
+                                        <Label Text="{Binding Checkout}" 
+                                               LineBreakMode="TailTruncation"
+                                               VerticalOptions="Center"
+                                               Margin="10,10"
+                                               TextColor="{Binding ., Converter={StaticResource AlternatingRowColorConverter}, ConverterParameter='TextColor'}" />
+                                        <BoxView WidthRequest="1" 
+                                                 BackgroundColor="#777777" 
+                                                 HorizontalOptions="End" 
+                                                 VerticalOptions="Fill"/>
+                                    </Grid>
+
+                                    <Grid Grid.Column="5">
+                                        <Label Text="{Binding Checkin}" 
+                                               LineBreakMode="TailTruncation"
+                                               VerticalOptions="Center"
+                                               Margin="10,10"
+                                               TextColor="{Binding ., Converter={StaticResource AlternatingRowColorConverter}, ConverterParameter='TextColor'}" />
+                                    </Grid>
+
+                                    <BoxView Grid.ColumnSpan="7" 
+                                             HeightRequest="1"
+                                             BackgroundColor="#777777" 
+                                             VerticalOptions="End" 
+                                             HorizontalOptions="Fill"/>
+
+                                    <Grid.GestureRecognizers>
+                                        <TapGestureRecognizer 
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:MainViewModel}}, Path=SelectObjectCommand}"
+                                            CommandParameter="{Binding .}"/>
+                                    </Grid.GestureRecognizers>
+                                </Grid>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                        <CollectionView.EmptyView>
+                            <StackLayout VerticalOptions="Center" 
+                                         HorizontalOptions="Center"
+                                         Padding="20"
+                                         BackgroundColor="#000000">
+                                <Label Text="Nenhum objeto encontrado" 
+                                       FontSize="16" 
+                                       HorizontalTextAlignment="Center"
+                                       TextColor="Gray" />
+                            </StackLayout>
+                        </CollectionView.EmptyView>
+                    </CollectionView>
+                </RefreshView>
+                
+                <Grid Grid.Row="2" 
+                      BackgroundColor="#1f1f1f"
+                      HeightRequest="60"
+                      Padding="10,8"
+                      ColumnDefinitions="Auto,*,Auto">
+                    
+                    <Entry Grid.Column="0"
+                           WidthRequest="70"
+                           HeightRequest="35"
+                           Keyboard="Numeric"
+                           Placeholder="Qtd."
+                           Text="{Binding RecordsToLoad, Mode=TwoWay}"
+                           VerticalOptions="Center"
+                           HorizontalOptions="Start"
+                           Completed="Entry_RecordsToLoad_Completed" />
+                    
+                    <!-- Pagination controls -->
+                    <Grid Grid.Column="1" 
+                          ColumnDefinitions="Auto,Auto,*,Auto,Auto"
+                          VerticalOptions="Center"
+                          HorizontalOptions="Center">
+                        
+                        <!-- First page button -->
+                        <Button x:Name="FirstPageButton"
+                                Grid.Column="0"
+                                Text="◀◀"
+                                FontSize="10"
+                                WidthRequest="40"
+                                HeightRequest="35"
+                                BackgroundColor="#0072C6"
+                                TextColor="White"
+                                CornerRadius="5"
+                                Command="{Binding GoToFirstPageCommand}"
+                                IsEnabled="{Binding CanGoFirstPage}"
+                                Margin="2,0" />
+                        
+                        <!-- Previous button -->
+                        <Button x:Name="PreviousPageButton"
+                                Grid.Column="1"
+                                Text="◀"
+                                FontSize="10"
+                                WidthRequest="40"
+                                HeightRequest="35"
+                                BackgroundColor="#0072C6"
+                                TextColor="White"
+                                CornerRadius="5"
+                                Command="{Binding GoToPreviousPageCommand}"
+                                IsEnabled="{Binding CanGoPreviousPage}"
+                                Margin="2,0" />
+                        
+                        <!-- Page info -->
+                        <StackLayout Grid.Column="2" 
+                                   Orientation="Vertical"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center"
+                                   Spacing="2"
+                                   Margin="10,0">
+                            <Label FontSize="12"
+                                   TextColor="White"
+                                   HorizontalOptions="Center">
+                                <Label.FormattedText>
+                                    <FormattedString>
+                                        <Span Text="Página " />
+                                        <Span Text="{Binding CurrentPage}" />
+                                        <Span Text=" de " />
+                                        <Span Text="{Binding TotalPages}" />
+                                    </FormattedString>
+                                </Label.FormattedText>
+                            </Label>
+                            <Label Text="{Binding TotalRecords, StringFormat='Total: {0} registros'}"
+                                   FontSize="10"
+                                   TextColor="Gray"
+                                   HorizontalOptions="Center" />
+                        </StackLayout>
+                        
+                        <!-- Next button -->
+                        <Button x:Name="NextPageButton"
+                                Grid.Column="3"
+                                Text="▶"
+                                FontSize="10"
+                                WidthRequest="40"
+                                HeightRequest="35"
+                                BackgroundColor="#0072C6"
+                                TextColor="White"
+                                CornerRadius="5"
+                                Command="{Binding GoToNextPageCommand}"
+                                IsEnabled="{Binding CanGoNextPage}"
+                                Margin="2,0" />
+                        
+                        <!-- Last page button -->
+                        <Button x:Name="LastPageButton"
+                                Grid.Column="4"
+                                Text="▶▶"
+                                FontSize="10"
+                                WidthRequest="40"
+                                HeightRequest="35"
+                                BackgroundColor="#0072C6"
+                                TextColor="White"
+                                CornerRadius="5"
+                                Command="{Binding GoToLastPageCommand}"
+                                IsEnabled="{Binding CanGoLastPage}"
+                                Margin="2,0" />
+                    </Grid>
+                    
+                    <Label Grid.Column="2"
+                           Text="{Binding LoadedObjectsCount, StringFormat='Carregados: {0}'}"
+                           FontSize="12"
+                           TextColor="White"
+                           HorizontalOptions="End"
+                           VerticalOptions="Center" />
+                    
+                    <ActivityIndicator Grid.ColumnSpan="3"
+                                      IsRunning="{Binding IsLoadingMore}"
+                                      IsVisible="{Binding IsLoadingMore}" 
+                                      Color="White"
+                                      HorizontalOptions="Center"
+                                      VerticalOptions="Center"
+                                      HeightRequest="30"
+                                      WidthRequest="30" />
+                </Grid>
+            </Grid>
+
+            <Border Grid.Row="1" Grid.RowSpan="2"
+                   IsVisible="{Binding IsSortPopupVisible}"
+                   StrokeThickness="1"
+                   Stroke="#DDDDDD"
+                   StrokeShape="RoundRectangle 10"
+                   BackgroundColor="White"
+                   HorizontalOptions="Center"
+                   VerticalOptions="Start"
+                   Margin="0,50,0,0"
+                   ZIndex="10"
+                   Padding="0">
+                <Grid RowDefinitions="Auto,Auto,*" WidthRequest="300">
+                    <Grid Grid.Row="0" BackgroundColor="#0072C6" Padding="15,10">
+                        <Label Text="Ordenar por campo" 
+                               TextColor="White"
+                               FontSize="16"
+                               FontAttributes="Bold"
+                               HorizontalOptions="Center"/>
+                    </Grid>
+
+                    <BoxView Grid.Row="1"
+                             Color="#EEEEEE"
+                             HeightRequest="1"/>
+
+                    <ScrollView Grid.Row="2" MaximumHeightRequest="300">
+                        <VerticalStackLayout Spacing="0" Padding="5">
+                            <Frame Padding="0" BorderColor="Transparent" BackgroundColor="{Binding CurrentSortField, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Objeto', FallbackValue=White, TargetNullValue=White}" Margin="5,2" HasShadow="False">
+                                <Grid Padding="10,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <Label Grid.Column="0" 
+                                         Text="Nome do objeto" 
+                                         FontSize="15" 
+                                         VerticalOptions="Center"
+                                         TextColor="Black" />
+
+                                    <Label Grid.Column="1" 
+                                         Text="✓" 
+                                         FontSize="16" 
+                                         TextColor="#0072C6" 
+                                         VerticalOptions="Center"
+                                         IsVisible="{Binding CurrentSortField, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Objeto'}" />
+
+                                    <Grid.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding SortByCommand}" CommandParameter="Objeto" />
+                                    </Grid.GestureRecognizers>
+                                </Grid>
+                            </Frame>
+
+                            <Frame Padding="0" BorderColor="Transparent" BackgroundColor="{Binding CurrentSortField, Converter={StaticResource StringEqualsConverter}, ConverterParameter='ObjectType', FallbackValue=White, TargetNullValue=White}" Margin="5,2" HasShadow="False">
+                                <Grid Padding="10,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <Label Grid.Column="0" 
+                                         Text="Tipo do objeto" 
+                                         FontSize="15" 
+                                         VerticalOptions="Center"
+                                         TextColor="Black" />
+
+                                    <Label Grid.Column="1" 
+                                         Text="✓" 
+                                         FontSize="16" 
+                                         TextColor="#0072C6" 
+                                         VerticalOptions="Center"
+                                         IsVisible="{Binding CurrentSortField, Converter={StaticResource StringEqualsConverter}, ConverterParameter='ObjectType'}" />
+
+                                    <Grid.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding SortByCommand}" CommandParameter="ObjectType" />
+                                    </Grid.GestureRecognizers>
+                                </Grid>
+                            </Frame>
+
+                            <Frame Padding="0" BorderColor="Transparent" BackgroundColor="{Binding CurrentSortField, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Status', FallbackValue=White, TargetNullValue=White}" Margin="5,2" HasShadow="False">
+                                <Grid Padding="10,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <Label Grid.Column="0" 
+                                         Text="Status (check-out/livre)" 
+                                         FontSize="15" 
+                                         VerticalOptions="Center"
+                                         TextColor="Black" />
+
+                                    <Label Grid.Column="1" 
+                                         Text="✓" 
+                                         FontSize="16" 
+                                         TextColor="#0072C6" 
+                                         VerticalOptions="Center"
+                                         IsVisible="{Binding CurrentSortField, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Status'}" />
+
+                                    <Grid.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding SortByCommand}" CommandParameter="Status" />
+                                    </Grid.GestureRecognizers>
+                                </Grid>
+                            </Frame>
+
+                            <Frame Padding="0" BorderColor="Transparent" BackgroundColor="{Binding CurrentSortField, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Usuario', FallbackValue=White, TargetNullValue=White}" Margin="5,2" HasShadow="False">
+                                <Grid Padding="10,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <Label Grid.Column="0" 
+                                         Text="Usuário" 
+                                         FontSize="15" 
+                                         VerticalOptions="Center"
+                                         TextColor="Black" />
+
+                                    <Label Grid.Column="1" 
+                                         Text="✓" 
+                                         FontSize="16" 
+                                         TextColor="#0072C6" 
+                                         VerticalOptions="Center"
+                                         IsVisible="{Binding CurrentSortField, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Usuario'}" />
+
+                                    <Grid.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding SortByCommand}" CommandParameter="Usuario" />
+                                    </Grid.GestureRecognizers>
+                                </Grid>
+                            </Frame>
+
+                            <Frame Padding="0" BorderColor="Transparent" BackgroundColor="{Binding CurrentSortField, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Checkout', FallbackValue=White, TargetNullValue=White}" Margin="5,2" HasShadow="False">
+                                <Grid Padding="10,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <Label Grid.Column="0" 
+                                         Text="Data de check-out" 
+                                         FontSize="15" 
+                                         VerticalOptions="Center"
+                                         TextColor="Black" />
+
+                                    <Label Grid.Column="1" 
+                                         Text="✓" 
+                                         FontSize="16" 
+                                         TextColor="#0072C6" 
+                                         VerticalOptions="Center"
+                                         IsVisible="{Binding CurrentSortField, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Checkout'}" />
+
+                                    <Grid.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding SortByCommand}" CommandParameter="Checkout" />
+                                    </Grid.GestureRecognizers>
+                                </Grid>
+                            </Frame>
+
+                            <Frame Padding="0" BorderColor="Transparent" BackgroundColor="{Binding CurrentSortField, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Checkin', FallbackValue=White, TargetNullValue=White}" Margin="5,2" HasShadow="False">
+                                <Grid Padding="10,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <Label Grid.Column="0" 
+                                         Text="Data de check-in" 
+                                         FontSize="15" 
+                                         VerticalOptions="Center"
+                                         TextColor="Black" />
+
+                                    <Label Grid.Column="1" 
+                                         Text="✓" 
+                                         FontSize="16" 
+                                         TextColor="#0072C6" 
+                                         VerticalOptions="Center"
+                                         IsVisible="{Binding CurrentSortField, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Checkin'}" />
+
+                                    <Grid.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding SortByCommand}" CommandParameter="Checkin" />
+                                    </Grid.GestureRecognizers>
+                                </Grid>
+                            </Frame>
+
+                            <Label Text="Direção da ordenação" 
+                                   Margin="10,15,10,5"
+                                   FontAttributes="Bold"
+                                   FontSize="15"/>
+
+                            <Grid ColumnDefinitions="*,*" Margin="10,0,10,10">
+                                <RadioButton Grid.Column="0"
+                                            x:Name="AscendingRadioButton"
+                                            Content="Ascendente ▲"
+                                            GroupName="SortDirection"
+                                            IsChecked="{Binding IsAscendingChecked}"
+                                            CheckedChanged="OnAscendingCheckedChanged"/>
+
+                                <RadioButton Grid.Column="1"
+                                            x:Name="DescendingRadioButton"
+                                            Content="Descendente ▼"
+                                            GroupName="SortDirection"
+                                            IsChecked="{Binding IsDescendingChecked}"
+                                            CheckedChanged="OnDescendingCheckedChanged"/>
+                            </Grid>
+
+                            <Button Text="Fechar"
+                                    Command="{Binding CloseSortPopupCommand}"
+                                    BackgroundColor="#607D8B"
+                                    TextColor="White"
+                                    CornerRadius="5"
+                                    Margin="10,15"/>
+                        </VerticalStackLayout>
+                    </ScrollView>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Frame Grid.Row="2" 
+               Padding="10"
+               Margin="10,10" 
+               BorderColor="#DDDDDD"
+               CornerRadius="5"
+               BackgroundColor="#212121"
+               HasShadow="True">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" RowDefinitions="Auto,Auto" ColumnDefinitions="2*,Auto">
+                    <Entry Grid.Row="0" Grid.Column="0"
+                           Placeholder="Nome do objeto"
+                           Margin="0,0,5,0"
+                           Text="{Binding SelectedObjectName}"/>
+                    <Label Grid.Row="0" Grid.Column="1"
+                           Text="{Binding SelectedObject.StatusDisplay}"
+                           TextColor="{Binding SelectedObject.StatusColor}"
+                           VerticalOptions="Center"
+                           FontAttributes="Bold"
+                           IsVisible="{Binding SelectedObject, Converter={StaticResource NotNullConverter}}"
+                           Margin="0,0,0,0"/>
+                    <Entry Grid.Row="1" Grid.Column="0"
+                           Placeholder="Comentário (obrigatório para check-out)"
+                           Text="{Binding Comment}"
+                           Margin="0,5,5,0"/>
+                    <Label Grid.Row="1" Grid.Column="1"
+                           Text="{Binding SelectedObject.ObjectType}"
+                           TextColor="White"
+                           VerticalOptions="Center"
+                           FontAttributes="Bold"
+                           IsVisible="{Binding SelectedObject, Converter={StaticResource NotNullConverter}}"
+                           Margin="0,5,0,0"/>
+                </Grid>
+
+                <Grid Grid.Row="2" 
+                      Margin="0,10,0,0"
+                      ColumnDefinitions="*,*,*,*">
+                    <Button x:Name="CheckoutButton"
+                            Grid.Column="0" 
+                            Text="Check-out" 
+                            Command="{Binding CheckoutCommand}"
+                            BackgroundColor="{Binding CheckoutButtonColor, Mode=OneWay}"
+                            TextColor="White"
+                            CornerRadius="5"
+                            IsEnabled="{Binding CanCheckout}"
+                            Margin="0,0,5,0"/>
+
+                    <Button x:Name="CheckinButton"
+                            Grid.Column="1" 
+                            Text="Check-in" 
+                            Command="{Binding CheckinCommand}"
+                            BackgroundColor="{Binding CheckinButtonColor, Mode=OneWay}"
+                            TextColor="White"
+                            CornerRadius="5"
+                            IsEnabled="{Binding CanCheckin}"
+                            Margin="5,0"/>
+
+                    <Button x:Name="DownloadButton"
+                            Grid.Column="2"
+                            Text="Download"
+                            Command="{Binding DownloadObjectCommand}"
+                            BackgroundColor="#2196F3"
+                            TextColor="White"
+                            CornerRadius="5"
+                            Margin="5,0"/>
+
+                    <Button x:Name="LogoutButton"
+                            Grid.Column="3" 
+                            Text="Sair" 
+                            Command="{Binding LogoutCommand}"
+                            BackgroundColor="#607D8B"
+                            TextColor="White"
+                            CornerRadius="5"
+                            Margin="5,0,0,0"/>
+                </Grid>
+            </Grid>
+        </Frame>
+
+        <Grid Grid.RowSpan="3" 
+              BackgroundColor="#80000000" 
+              IsVisible="{Binding IsBusy}"
+              ZIndex="20">
+            <StackLayout VerticalOptions="Center" 
+                         HorizontalOptions="Center"
+                         Spacing="15">
+                <ActivityIndicator IsRunning="True" 
+                                  Color="White" 
+                                  HeightRequest="50" 
+                                  WidthRequest="50"/>
+                <Label Text="{Binding StatusMessage}" 
+                       TextColor="White" 
+                       FontSize="16"
+                       FontAttributes="Bold"
+                       HorizontalOptions="Center"/>
+            </StackLayout>
+        </Grid>
+
+        <Label Grid.Row="0" 
+               Text="{Binding StatusMessage}" 
+               TextColor="{Binding StatusColor}"
+               FontSize="14"
+               HorizontalOptions="End"
+               Margin="0,0,10,0"
+               IsVisible="{Binding StatusMessage, Converter={StaticResource NotNullOrEmptyConverter}}"/>
+
+        <Grid Grid.RowSpan="3" 
+              BackgroundColor="Transparent" 
+              IsVisible="{Binding IsSortPopupVisible}"
+              ZIndex="9">
+            <Grid.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding CloseSortPopupCommand}"/>
+            </Grid.GestureRecognizers>
+        </Grid>
+    </Grid>
+</ContentPage>

@@ -1,0 +1,34 @@
+﻿<?xml version = "1.0" encoding = "UTF-8" ?>
+<Application xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:converters="clr-namespace:Oracle_Version_Control.Converters"
+             xmlns:material="http://schemas.enisn-projects.io/dotnet/maui/uraniumui/material"
+             xmlns:local="clr-namespace:Oracle_Version_Control"
+             x:Class="Oracle_Version_Control.App"
+             UserAppTheme="Dark">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Resources/Styles/Colors.xaml" />
+                <ResourceDictionary Source="Resources/Styles/Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            
+            <!-- Definindo recursos de cores -->
+            <Color x:Key="Primary">#0072C6</Color>
+            <Color x:Key="PrimaryDark">#005999</Color>
+            <Color x:Key="Accent">#4CAF50</Color>
+            <Color x:Key="Background">#F0F0F0</Color>
+            <Color x:Key="LightText">#FFFFFF</Color>
+            <Color x:Key="DarkText">#333333</Color>
+            
+            <!-- Conversores -->
+            <converters:AlternatingRowColorConverter x:Key="AlternatingRowColorConverter" />
+            <converters:StringEqualsConverter x:Key="StringEqualsConverter" />
+            <converters:NotNullConverter x:Key="NotNullConverter" />
+            <converters:NotNullOrEmptyConverter x:Key="NotNullOrEmptyConverter" />
+            <converters:BoolToStringConverter x:Key="BoolToStringConverter" />
+            <converters:DirectionSymbolConverter x:Key="DirectionSymbolConverter" />
+            <converters:MultiBoolConverter x:Key="MultiBoolConverter" />
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
