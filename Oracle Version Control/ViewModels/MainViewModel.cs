@@ -15,7 +15,6 @@ namespace Oracle_Version_Control.ViewModels
         private string _lastSearchTerm = string.Empty;
         private Dictionary<string, object> _propertyCache = new Dictionary<string, object>();
 
-        // Pagination support
         private readonly List<VersionedObject> _sourceData = new();
         private int _pageSize = 50;
 
@@ -91,22 +90,20 @@ namespace Oracle_Version_Control.ViewModels
         public bool CanGoFirstPage => CurrentPage > 1;
         public bool CanGoLastPage => CurrentPage < TotalPages;
 
-        private int GetPageSize()
-        {
-            if (string.IsNullOrWhiteSpace(RecordsToLoad))
-            {
-                return 50; // Valor padrão
-            }
+        [ObservableProperty]
+        private string _currentSortFieldDisplay = "Data de checkout (desc)";
 
-            if (int.TryParse(RecordsToLoad, out int pageSize) && pageSize > 0)
-            {
-                return pageSize;
-            }
+        [ObservableProperty]
+        private bool _isSortPopupVisible = false;
 
-            return 50; // Fallback para valor padrão
-        }
+        [ObservableProperty]
+        private bool _isAscendingChecked = false;
 
-        public bool IsLoadMoreEnabled => !IsLoadingMore;
+        [ObservableProperty]
+        private bool _isDescendingChecked = true;
+
+        [ObservableProperty]
+        private SearchColumn _selectedSearchColumn;
 
         private string _currentSortField = "Checkout";
         public string CurrentSortField
@@ -136,19 +133,7 @@ namespace Oracle_Version_Control.ViewModels
             }
         }
 
-        [ObservableProperty]
-        private string _currentSortFieldDisplay = "Data de checkout (desc)";
-
-        [ObservableProperty]
-        private bool _isSortPopupVisible = false;
-
-        [ObservableProperty]
-        private bool _isAscendingChecked = false;
-
-        [ObservableProperty]
-        private bool _isDescendingChecked = true;
-
-        public static Dictionary<string, string> SortFields { get; } = new Dictionary<string, string>
+        public static Dictionary<string, string> SortFields { get; } = new()
         {
             { "Objeto", "Objeto" },
             { "ObjectType", "Tipo do objeto" },
@@ -178,7 +163,6 @@ namespace Oracle_Version_Control.ViewModels
             public bool IsPlaceholder { get; set; } = false;
         }
 
-        // Lista de colunas pesquisáveis com placeholder
         public List<SearchColumn> SearchableColumns { get; } = new()
         {
             new SearchColumn { Display = "Coluna", Value = "", IsPlaceholder = true },
@@ -189,10 +173,8 @@ namespace Oracle_Version_Control.ViewModels
             new SearchColumn { Display = "Comentário", Value = "Comments" }
         };
 
-        [ObservableProperty]
-        private SearchColumn _selectedSearchColumn;
-
         private string _lastSearchColumn = "Objeto";
+        public bool IsLoadMoreEnabled => !IsLoadingMore;
 
         public MainViewModel(OracleService oracleService)
         {
@@ -206,7 +188,6 @@ namespace Oracle_Version_Control.ViewModels
             IsAscendingChecked = false;
             IsDescendingChecked = true;
 
-            // Seleciona "Objeto" como padrão
             SelectedSearchColumn = SearchableColumns.FirstOrDefault(x => x.Value == "Objeto") ?? SearchableColumns[1];
 
             UpdateSortFieldDisplay();
@@ -237,6 +218,17 @@ namespace Oracle_Version_Control.ViewModels
             }
         }
 
+        private int GetPageSize()
+        {
+            if (string.IsNullOrWhiteSpace(RecordsToLoad))
+                return 50;
+
+            if (int.TryParse(RecordsToLoad, out int pageSize) && pageSize > 0)
+                return pageSize;
+
+            return 50;
+        }
+
         private T GetOrCalculate<T>(string key, Func<T> calculator)
         {
             if (!_propertyCache.ContainsKey(key))
@@ -258,18 +250,36 @@ namespace Oracle_Version_Control.ViewModels
             }
         }
 
+        private void SetStatusMessage(string message, Color color, int hideAfterMs = 0)
+        {
+            StatusMessage = message;
+            StatusColor = color;
+            
+            if (hideAfterMs > 0)
+            {
+                Task.Delay(hideAfterMs).ContinueWith(_ =>
+                {
+                    MainThread.BeginInvokeOnMainThread(() => StatusMessage = string.Empty);
+                });
+            }
+        }
+
+        private void ClearDataAndResetPagination()
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                Objects.Clear();
+                LoadedObjectsCount = 0;
+                _sourceData.Clear();
+                CurrentPage = 1;
+            });
+        }
+
         private async void LoadUserCheckoutObjects()
         {
             try
             {
-                MainThread.BeginInvokeOnMainThread(() =>
-                {
-                    Objects.Clear();
-                    LoadedObjectsCount = 0;
-                    _sourceData.Clear();
-                    CurrentPage = 1;
-                });
-
+                ClearDataAndResetPagination();
                 await Task.Delay(100);
                 
                 var data = await _oracleService.GetUserCheckoutObjectsAsync(CurrentUser);
@@ -279,21 +289,16 @@ namespace Oracle_Version_Control.ViewModels
 
                 if (_sourceData.Count > 0)
                 {
-                    StatusMessage = $"Carregados {_sourceData.Count} objetos com checkout para você";
+                    SetStatusMessage($"Carregados {_sourceData.Count} objetos com checkout para você", Color.FromArgb("#FFD600"), 2000);
                 }
                 else
                 {
-                    StatusMessage = "Você não tem objetos com checkout";
+                    SetStatusMessage("Você não tem objetos com checkout", Color.FromArgb("#FFD600"), 2000);
                 }
-                StatusColor = Color.FromArgb("#FFD600");
-
-                await Task.Delay(2000);
-                StatusMessage = string.Empty;
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Erro: {ex.Message}";
-                StatusColor = Colors.Red;
+                SetStatusMessage($"Erro: {ex.Message}", Colors.Red);
                 _isInitialLoad = false;
             }
             finally
@@ -317,7 +322,6 @@ namespace Oracle_Version_Control.ViewModels
                 return;
             }
 
-            // Load all data into source collection
             _sourceData.Clear();
             foreach (DataRow row in data.Rows)
             {
@@ -325,13 +329,11 @@ namespace Oracle_Version_Control.ViewModels
                 _sourceData.Add(obj);
             }
 
-            // Calculate pagination
             _pageSize = GetPageSize();
             TotalRecords = _sourceData.Count;
             TotalPages = (int)Math.Ceiling((double)TotalRecords / _pageSize);
             CurrentPage = 1;
 
-            // Load first page
             await LoadCurrentPage();
         }
 
@@ -346,7 +348,9 @@ namespace Oracle_Version_Control.ViewModels
 
                 for (int i = startIndex; i < endIndex; i++)
                 {
-                    Objects.Add(_sourceData[i]);
+                    var obj = _sourceData[i];
+                    obj.DisplayIndex = i - startIndex;
+                    Objects.Add(obj);
                 }
 
                 LoadedObjectsCount = Objects.Count;
@@ -361,7 +365,6 @@ namespace Oracle_Version_Control.ViewModels
         private async Task GoToPreviousPage()
         {
             if (!CanGoPreviousPage) return;
-
             CurrentPage--;
             await LoadCurrentPage();
         }
@@ -370,7 +373,6 @@ namespace Oracle_Version_Control.ViewModels
         private async Task GoToNextPage()
         {
             if (!CanGoNextPage) return;
-
             CurrentPage++;
             await LoadCurrentPage();
         }
@@ -379,7 +381,6 @@ namespace Oracle_Version_Control.ViewModels
         private async Task GoToFirstPage()
         {
             if (!CanGoFirstPage) return;
-
             CurrentPage = 1;
             await LoadCurrentPage();
         }
@@ -388,65 +389,66 @@ namespace Oracle_Version_Control.ViewModels
         private async Task GoToLastPage()
         {
             if (!CanGoLastPage) return;
-
             CurrentPage = TotalPages;
             await LoadCurrentPage();
         }
 
-        [RelayCommand]
-        private async Task OnRecordsToLoadChanged()
+        public async Task UpdatePaginationAsync()
         {
-            // When page size changes, recalculate pagination
             if (_sourceData.Count > 0)
             {
-                _pageSize = GetPageSize();
-                TotalPages = (int)Math.Ceiling((double)TotalRecords / _pageSize);
-                CurrentPage = 1;
-                await LoadCurrentPage();
+                IsBusy = true;
+                SetStatusMessage("Recalculando paginação...", Colors.Gray);
+                
+                try
+                {
+                    await Task.Delay(100); // Pequeno delay para mostrar o overlay
+                    
+                    _pageSize = GetPageSize();
+                    TotalPages = (int)Math.Ceiling((double)TotalRecords / _pageSize);
+                    CurrentPage = 1;
+                    await LoadCurrentPage();
+                    
+                    SetStatusMessage($"Paginação atualizada - {_pageSize} registros por página", Color.FromArgb("#FFD600"), 1500);
+                }
+                catch (Exception ex)
+                {
+                    SetStatusMessage($"Erro ao atualizar paginação: {ex.Message}", Colors.Red);
+                }
+                finally
+                {
+                    IsBusy = false;
+                }
             }
         }
 
         [RelayCommand]
         private async Task Search()
         {
-            // Não faz busca se placeholder estiver selecionado
-            if (SelectedSearchColumn == null || SelectedSearchColumn.IsPlaceholder)
+            if (SelectedSearchColumn?.IsPlaceholder == true)
             {
-                StatusMessage = "Selecione uma coluna para pesquisar.";
-                StatusColor = Colors.Red;
-                return;
-            }
-            if (SearchTerm == _lastSearchTerm && !string.IsNullOrEmpty(_lastSearchTerm) && SelectedSearchColumn.Value == _lastSearchColumn)
-            {
+                SetStatusMessage("Selecione uma coluna para pesquisar.", Colors.Red);
                 return;
             }
 
+            if (SearchTerm == _lastSearchTerm && !string.IsNullOrEmpty(_lastSearchTerm) && SelectedSearchColumn.Value == _lastSearchColumn)
+                return;
+
             IsBusy = true;
-            StatusMessage = "Buscando objetos...";
-            StatusColor = Colors.Gray;
+            SetStatusMessage("Buscando objetos...", Colors.Gray);
 
             try
             {
-                MainThread.BeginInvokeOnMainThread(() =>
-                {
-                    Objects.Clear();
-                    LoadedObjectsCount = 0;
-                    _sourceData.Clear();
-                    CurrentPage = 1;
-                });
+                ClearDataAndResetPagination();
 
                 string searchValue = SearchTerm;
                 string searchColumn = SelectedSearchColumn.Value;
-                // Conversão especial para status
+                
                 if (searchColumn == "Status")
                 {
-                    if (searchValue.Contains("check", StringComparison.OrdinalIgnoreCase))
-                        searchValue = "Y";
-                    else if (searchValue.Contains("livre", StringComparison.OrdinalIgnoreCase))
-                        searchValue = "N";
+                    searchValue = searchValue.Contains("check", StringComparison.OrdinalIgnoreCase) ? "Y" : "N";
                 }
 
-                // Load all results for pagination
                 var data = await _oracleService.SearchObjectsByColumnAsync(searchColumn, searchValue, CurrentSortField, SortAscending, int.MaxValue, 0);
                 await LoadAllDataAndPaginate(data);
 
@@ -454,16 +456,11 @@ namespace Oracle_Version_Control.ViewModels
                 _lastSearchColumn = SelectedSearchColumn.Value;
                 UpdateSortFieldDisplay();
 
-                StatusMessage = $"Encontrados {TotalRecords} objetos";
-                StatusColor = Color.FromArgb("#FFD600");
-
-                await Task.Delay(2000);
-                StatusMessage = string.Empty;
+                SetStatusMessage($"Encontrados {TotalRecords} objetos", Color.FromArgb("#FFD600"), 2000);
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Erro: {ex.Message}";
-                StatusColor = Colors.Red;
+                SetStatusMessage($"Erro: {ex.Message}", Colors.Red);
             }
             finally
             {
@@ -484,8 +481,7 @@ namespace Oracle_Version_Control.ViewModels
         private async Task ReloadObjects()
         {
             IsBusy = true;
-            StatusMessage = "Buscando objetos...";
-            StatusColor = Colors.Gray;
+            SetStatusMessage("Buscando objetos...", Colors.Gray);
 
             try
             {
@@ -493,30 +489,17 @@ namespace Oracle_Version_Control.ViewModels
                 _lastSearchTerm = string.Empty;
                 InvalidateCache();
 
-                MainThread.BeginInvokeOnMainThread(() =>
-                {
-                    Objects.Clear();
-                    LoadedObjectsCount = 0;
-                    _sourceData.Clear();
-                    CurrentPage = 1;
-                });
+                ClearDataAndResetPagination();
 
-                // Load all results for pagination
                 var data = await _oracleService.SearchObjectsAsync("", CurrentSortField, SortAscending, int.MaxValue, 0);
                 await LoadAllDataAndPaginate(data);
 
                 UpdateSortFieldDisplay();
-
-                StatusMessage = $"Lista de objetos recarregada ({TotalRecords} objetos)";
-                StatusColor = Color.FromArgb("#FFD600");
-
-                await Task.Delay(2000);
-                StatusMessage = string.Empty;
+                SetStatusMessage($"Lista de objetos recarregada ({TotalRecords} objetos)", Color.FromArgb("#FFD600"), 2000);
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Erro: {ex.Message}";
-                StatusColor = Colors.Red;
+                SetStatusMessage($"Erro: {ex.Message}", Colors.Red);
             }
             finally
             {
@@ -527,21 +510,16 @@ namespace Oracle_Version_Control.ViewModels
         [RelayCommand]
         private async Task SortBy(string field)
         {
-            StatusMessage = $"Ordenando por {field}...";
+            SetStatusMessage($"Ordenando por {field}...", Colors.Gray);
 
             try
             {
-                // Verificar se há dados para ordenar
                 if (_sourceData.Count == 0)
                 {
-                    StatusMessage = "Nenhum dado disponível para ordenar.";
-                    StatusColor = Colors.Orange;
-                    await Task.Delay(2000);
-                    StatusMessage = string.Empty;
+                    SetStatusMessage("Nenhum dado disponível para ordenar.", Colors.Orange, 2000);
                     return;
                 }
 
-                // Se a coluna do picker for diferente do campo de ordenação, atualiza o campo de ordenação
                 if (CurrentSortField != field)
                 {
                     CurrentSortField = field;
@@ -554,57 +532,45 @@ namespace Oracle_Version_Control.ViewModels
                 UpdateSortFieldDisplay();
                 IsSortPopupVisible = false;
 
-                // Apply sorting to source data and reload current page
                 await ApplySortingToSourceData(field);
 
-                StatusMessage = $"Ordenado por {(SortFields.ContainsKey(CurrentSortField) ? SortFields[CurrentSortField] : CurrentSortField)} - {_sourceData.Count} itens";
-                StatusColor = Color.FromArgb("#FFD600");
-                await Task.Delay(1500);
-                StatusMessage = string.Empty;
+                string fieldDisplayName = SortFields.TryGetValue(CurrentSortField, out string name) ? name : CurrentSortField;
+                SetStatusMessage($"Ordenado por {fieldDisplayName} - {_sourceData.Count} itens", Color.FromArgb("#FFD600"), 1500);
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Erro ao ordenar: {ex.Message}";
-                StatusColor = Colors.Red;
+                SetStatusMessage($"Erro ao ordenar: {ex.Message}", Colors.Red);
                 IsBusy = false;
                 
-                // Tentar recarregar dados atuais em caso de erro
                 try
                 {
                     await LoadCurrentPage();
                 }
                 catch (Exception loadEx)
                 {
-                    StatusMessage = $"Erro crítico: {loadEx.Message}";
+                    SetStatusMessage($"Erro crítico: {loadEx.Message}", Colors.Red);
                 }
             }
         }
 
         private async Task ApplySortingToSourceData(string field)
         {
-            if (_sourceData.Count == 0) return; // Não faz nada se não há dados
+            if (_sourceData.Count == 0) return;
 
             try
             {
-                // Apply sorting to source data
                 var propertyInfo = typeof(VersionedObject).GetProperty(field);
+                IEnumerable<VersionedObject> sorted;
+
                 if (propertyInfo != null)
                 {
-                    IEnumerable<VersionedObject> sorted;
-                    if (SortAscending)
-                        sorted = _sourceData.OrderBy(o => propertyInfo.GetValue(o, null));
-                    else
-                        sorted = _sourceData.OrderByDescending(o => propertyInfo.GetValue(o, null));
-
-                    // Criar nova lista ao invés de limpar e adicionar
-                    var sortedList = sorted.ToList();
-                    _sourceData.Clear();
-                    _sourceData.AddRange(sortedList);
+                    sorted = SortAscending 
+                        ? _sourceData.OrderBy(o => propertyInfo.GetValue(o, null))
+                        : _sourceData.OrderByDescending(o => propertyInfo.GetValue(o, null));
                 }
                 else
                 {
-                    // Fallback for older field mapping
-                    IEnumerable<VersionedObject> sorted = field switch
+                    sorted = field switch
                     {
                         "Objeto" => SortAscending ? _sourceData.OrderBy(o => o.Objeto) : _sourceData.OrderByDescending(o => o.Objeto),
                         "ObjectType" => SortAscending ? _sourceData.OrderBy(o => o.ObjectType) : _sourceData.OrderByDescending(o => o.ObjectType),
@@ -614,22 +580,18 @@ namespace Oracle_Version_Control.ViewModels
                         "Checkin" => SortAscending ? _sourceData.OrderBy(o => o.Checkin) : _sourceData.OrderByDescending(o => o.Checkin),
                         _ => _sourceData
                     };
-
-                    // Criar nova lista ao invés de limpar e adicionar
-                    var sortedList = sorted.ToList();
-                    _sourceData.Clear();
-                    _sourceData.AddRange(sortedList);
                 }
 
-                // Reset to first page and reload
+                var sortedList = sorted.ToList();
+                _sourceData.Clear();
+                _sourceData.AddRange(sortedList);
+
                 CurrentPage = 1;
                 await LoadCurrentPage();
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Erro ao ordenar: {ex.Message}";
-                StatusColor = Colors.Red;
-                // Em caso de erro, recarrega a página atual para manter os dados
+                SetStatusMessage($"Erro ao ordenar: {ex.Message}", Colors.Red);
                 await LoadCurrentPage();
             }
         }
@@ -639,39 +601,23 @@ namespace Oracle_Version_Control.ViewModels
         {
             try
             {
-                bool targetAscending = true;
-                if (bool.TryParse(parameter, out bool result))
-                {
-                    targetAscending = result;
-                }
-                else
-                {
-                    targetAscending = !SortAscending;
-                }
+                bool targetAscending = bool.TryParse(parameter, out bool result) ? result : !SortAscending;
 
                 if (SortAscending == targetAscending)
-                {
                     return;
-                }
 
                 SortAscending = targetAscending;
                 UpdateSortFieldDisplay();
 
-                StatusMessage = $"Alterando direção de ordenação para {(SortAscending ? "crescente" : "decrescente")}...";
+                SetStatusMessage($"Alterando direção de ordenação para {(SortAscending ? "crescente" : "decrescente")}...", Colors.Gray);
 
-                // Apply sorting to source data
                 await ApplySortingToSourceData(CurrentSortField);
 
-                StatusMessage = $"Direção alterada para {(SortAscending ? "crescente" : "decrescente")}";
-                StatusColor = Color.FromArgb("#FFD600");
-
-                await Task.Delay(1500);
-                StatusMessage = string.Empty;
+                SetStatusMessage($"Direção alterada para {(SortAscending ? "crescente" : "decrescente")}", Color.FromArgb("#FFD600"), 1500);
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Erro: {ex.Message}";
-                StatusColor = Colors.Red;
+                SetStatusMessage($"Erro: {ex.Message}", Colors.Red);
             }
         }
 
@@ -680,8 +626,7 @@ namespace Oracle_Version_Control.ViewModels
         {
             try
             {
-                StatusMessage = "Finalizando conexão...";
-                StatusColor = Colors.Gray;
+                SetStatusMessage("Finalizando conexão...", Colors.Gray);
                 IsBusy = true;
 
                 await Task.Delay(800);
@@ -692,8 +637,7 @@ namespace Oracle_Version_Control.ViewModels
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Erro ao fazer logout: {ex.Message}";
-                StatusColor = Colors.Red;
+                SetStatusMessage($"Erro ao fazer logout: {ex.Message}", Colors.Red);
                 IsBusy = false;
             }
         }
@@ -701,36 +645,37 @@ namespace Oracle_Version_Control.ViewModels
         [RelayCommand]
         private async Task DownloadObject()
         {
-            if (SelectedObject == null || string.IsNullOrWhiteSpace(SelectedObject.Objeto) || string.IsNullOrWhiteSpace(SelectedObject.ObjectType))
+            if (SelectedObject?.Objeto == null || string.IsNullOrWhiteSpace(SelectedObject.ObjectType))
             {
-                StatusMessage = "Selecione um objeto para download.";
-                StatusColor = Colors.Red;
+                SetStatusMessage("Selecione um objeto para download.", Colors.Red);
                 return;
             }
+
             try
             {
                 IsBusy = true;
-                StatusMessage = "Baixando DDL do objeto...";
-                StatusColor = Colors.Gray;
+                SetStatusMessage("Baixando DDL do objeto...", Colors.Gray);
+                
                 var ddl = await _oracleService.GetObjectDdlAsync(SelectedObject.ObjectType, SelectedObject.Objeto);
                 if (string.IsNullOrWhiteSpace(ddl))
                 {
-                    StatusMessage = "DDL não encontrado para o objeto.";
-                    StatusColor = Colors.Red;
+                    SetStatusMessage("DDL não encontrado para o objeto.", Colors.Red);
                     return;
                 }
+
                 var fileName = $"{SelectedObject.Objeto}_{SelectedObject.ObjectType}.sql";
                 var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
                 var filePath = Path.Combine(documentsPath, fileName);
+                
                 System.IO.File.WriteAllText(filePath, ddl);
-                StatusMessage = $"Arquivo salvo em: {filePath}";
-                StatusColor = Color.FromArgb("#FFD600");
-                await App.Current.MainPage.DisplayAlert("Atenção", StatusMessage, "OK");
+                
+                string message = $"Arquivo salvo em: {filePath}";
+                SetStatusMessage(message, Color.FromArgb("#FFD600"));
+                await App.Current.MainPage.DisplayAlert("Atenção", message, "OK");
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Erro ao baixar DDL: {ex.Message}";
-                StatusColor = Colors.Red;
+                SetStatusMessage($"Erro ao baixar DDL: {ex.Message}", Colors.Red);
             }
             finally
             {
@@ -741,40 +686,24 @@ namespace Oracle_Version_Control.ViewModels
         [RelayCommand]
         private async Task LoadMore()
         {
-            if (IsLoadingMore)
-            {
-                return;
-            }
+            if (IsLoadingMore) return;
 
             IsLoadingMore = true;
-            StatusMessage = "Carregando objetos...";
-            StatusColor = Colors.Gray;
+            SetStatusMessage("Carregando objetos...", Colors.Gray);
 
             try
             {
-                MainThread.BeginInvokeOnMainThread(() =>
-                {
-                    Objects.Clear();
-                    LoadedObjectsCount = 0;
-                    _sourceData.Clear();
-                    CurrentPage = 1;
-                });
-                
+                ClearDataAndResetPagination();
                 await Task.Delay(50);
 
                 var data = await _oracleService.SearchObjectsAsync(SearchTerm, CurrentSortField, SortAscending, int.MaxValue, 0);
                 await LoadAllDataAndPaginate(data);
                     
-                StatusMessage = $"Carregados {TotalRecords} objetos";
-                StatusColor = Color.FromArgb("#FFD600");
-                
-                await Task.Delay(1000);
-                StatusMessage = string.Empty;
+                SetStatusMessage($"Carregados {TotalRecords} objetos", Color.FromArgb("#FFD600"), 1000);
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Erro: {ex.Message}";
-                StatusColor = Colors.Red;
+                SetStatusMessage($"Erro: {ex.Message}", Colors.Red);
             }
             finally
             {
@@ -782,29 +711,25 @@ namespace Oracle_Version_Control.ViewModels
             }
         }
 
-        [RelayCommand]
-        private async Task Checkout()
+        private async Task PerformObjectOperation(Func<Task> operation, string operationName)
         {
             if (string.IsNullOrWhiteSpace(SelectedObjectName))
             {
-                StatusMessage = "Informe o nome do objeto";
-                StatusColor = Colors.Red;
+                SetStatusMessage("Informe o nome do objeto", Colors.Red);
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(Comment))
             {
-                StatusMessage = "O comentário é obrigatório para check-out";
-                StatusColor = Colors.Red;
+                SetStatusMessage($"O comentário é obrigatório para {operationName}", Colors.Red);
                 return;
             }
 
             IsBusy = true;
             try
             {
-                await _oracleService.CheckoutObjectAsync(SelectedObjectName, SelectedObjectType, Comment);
-                StatusMessage = $"Check-out realizado para {SelectedObjectName}";
-                StatusColor = Color.FromArgb("#FFD600");
+                await operation();
+                SetStatusMessage($"{operationName} realizado para {SelectedObjectName}", Color.FromArgb("#FFD600"));
 
                 _lastSearchTerm = string.Empty;
                 if (string.IsNullOrWhiteSpace(SearchTerm))
@@ -818,8 +743,7 @@ namespace Oracle_Version_Control.ViewModels
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Erro no check-out: {ex.Message}";
-                StatusColor = Colors.Red;
+                SetStatusMessage($"Erro no {operationName.ToLower()}: {ex.Message}", Colors.Red);
             }
             finally
             {
@@ -828,48 +752,21 @@ namespace Oracle_Version_Control.ViewModels
         }
 
         [RelayCommand]
+        private async Task Checkout()
+        {
+            await PerformObjectOperation(
+                () => _oracleService.CheckoutObjectAsync(SelectedObjectName, SelectedObjectType, Comment),
+                "check-out"
+            );
+        }
+
+        [RelayCommand]
         private async Task Checkin()
         {
-            if (string.IsNullOrWhiteSpace(SelectedObjectName))
-            {
-                StatusMessage = "Informe o nome do objeto";
-                StatusColor = Colors.Red;
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(Comment))
-            {
-                StatusMessage = "O comentário é obrigatório para check-in";
-                StatusColor = Colors.Red;
-                return;
-            }
-
-            IsBusy = true;
-            try
-            {
-                await _oracleService.CheckinObjectAsync(SelectedObjectName, SelectedObjectType, Comment);
-                StatusMessage = $"Check-in realizado para {SelectedObjectName}";
-                StatusColor = Color.FromArgb("#FFD600");
-
-                _lastSearchTerm = string.Empty;
-                if (string.IsNullOrWhiteSpace(SearchTerm))
-                {
-                    LoadUserCheckoutObjects();
-                }
-                else
-                {
-                    await Search();
-                }
-            }
-            catch (Exception ex)
-            {
-                StatusMessage = $"Erro no check-in: {ex.Message}";
-                StatusColor = Colors.Red;
-            }
-            finally
-            {
-                IsBusy = false;
-            }
+            await PerformObjectOperation(
+                () => _oracleService.CheckinObjectAsync(SelectedObjectName, SelectedObjectType, Comment),
+                "check-in"
+            );
         }
 
         [RelayCommand]
@@ -885,31 +782,15 @@ namespace Oracle_Version_Control.ViewModels
             CanCheckin = obj.Status == "Y" && obj.Usuario.ToUpper() == CurrentUser;
             CanCheckout = obj.Status != "Y";
 
-            if (!CanCheckout)
-            {
-                CheckoutButtonColor = Application.Current?.RequestedTheme == AppTheme.Dark
-                    ? Color.FromArgb("#444444")
-                    : Color.FromArgb("#CCCCCC");
-            }
-            else
-            {
-                CheckoutButtonColor = Application.Current?.RequestedTheme == AppTheme.Dark
-                    ? Color.FromArgb("#4CAF50")
-                    : Color.FromArgb("#98FC55");
-            }
+            bool isDarkTheme = Application.Current?.RequestedTheme == AppTheme.Dark;
 
-            if (!CanCheckin)
-            {
-                CheckinButtonColor = Application.Current?.RequestedTheme == AppTheme.Dark
-                    ? Color.FromArgb("#444444")
-                    : Color.FromArgb("#CCCCCC");
-            }
-            else
-            {
-                CheckinButtonColor = Application.Current?.RequestedTheme == AppTheme.Dark
-                    ? Color.FromArgb("#F44336")
-                    : Color.FromArgb("#F44336");
-            }
+            CheckoutButtonColor = CanCheckout 
+                ? (isDarkTheme ? Color.FromArgb("#4CAF50") : Color.FromArgb("#98FC55"))
+                : (isDarkTheme ? Color.FromArgb("#444444") : Color.FromArgb("#CCCCCC"));
+
+            CheckinButtonColor = CanCheckin 
+                ? Color.FromArgb("#F44336")
+                : (isDarkTheme ? Color.FromArgb("#444444") : Color.FromArgb("#CCCCCC"));
         }
 
         private void UpdateSortFieldDisplay()
@@ -918,24 +799,15 @@ namespace Oracle_Version_Control.ViewModels
 
             CurrentSortFieldDisplay = GetOrCalculate(cacheKey, () =>
             {
-                if (SortFields.TryGetValue(CurrentSortField, out string fieldName))
-                {
-                    return $"{fieldName} ({(SortAscending ? "asc" : "desc")})";
-                }
-                return $"{CurrentSortField} ({(SortAscending ? "asc" : "desc")})";
+                string fieldName = SortFields.TryGetValue(CurrentSortField, out string name) ? name : CurrentSortField;
+                return $"{fieldName} ({(SortAscending ? "asc" : "desc")})";
             });
         }
 
         [RelayCommand]
-        private void ShowSortPopup()
-        {
-            IsSortPopupVisible = true;
-        }
+        private void ShowSortPopup() => IsSortPopupVisible = true;
 
         [RelayCommand]
-        private void CloseSortPopup()
-        {
-            IsSortPopupVisible = false;
-        }
+        private void CloseSortPopup() => IsSortPopupVisible = false;
     }
 }

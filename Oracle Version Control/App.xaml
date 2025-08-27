@@ -23,12 +23,11 @@
             
             <!-- Conversores -->
             <converters:AlternatingRowColorConverter x:Key="AlternatingRowColorConverter" />
+            <converters:IndexToColorConverter x:Key="IndexToColorConverter" />
             <converters:StringEqualsConverter x:Key="StringEqualsConverter" />
             <converters:NotNullConverter x:Key="NotNullConverter" />
             <converters:NotNullOrEmptyConverter x:Key="NotNullOrEmptyConverter" />
-            <converters:BoolToStringConverter x:Key="BoolToStringConverter" />
             <converters:DirectionSymbolConverter x:Key="DirectionSymbolConverter" />
-            <converters:MultiBoolConverter x:Key="MultiBoolConverter" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -317,7 +317,7 @@
                         </CollectionView.ItemsLayout>
                         <CollectionView.ItemTemplate>
                             <DataTemplate x:DataType="models:VersionedObject">
-                                <Grid BackgroundColor="{Binding ., Converter={StaticResource AlternatingRowColorConverter}}">
+                                <Grid BackgroundColor="{Binding DisplayIndex, Converter={StaticResource IndexToColorConverter}}">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="{Binding Source={x:Reference Col1}, Path=Width}" />
                                         <ColumnDefinition Width="{Binding Source={x:Reference Col2}, Path=Width}" />
@@ -333,7 +333,7 @@
                                                LineBreakMode="TailTruncation"
                                                VerticalOptions="Center"
                                                Margin="10,10"
-                                               TextColor="{Binding ., Converter={StaticResource AlternatingRowColorConverter}, ConverterParameter='TextColor'}" />
+                                               TextColor="{Binding DisplayIndex, Converter={StaticResource IndexToColorConverter}, ConverterParameter='TextColor'}" />
                                         <BoxView WidthRequest="1" 
                                                  BackgroundColor="#777777" 
                                                  HorizontalOptions="End" 
@@ -345,7 +345,7 @@
                                                LineBreakMode="TailTruncation"
                                                VerticalOptions="Center"
                                                Margin="10,10"
-                                               TextColor="{Binding ., Converter={StaticResource AlternatingRowColorConverter}, ConverterParameter='TextColor'}" />
+                                               TextColor="{Binding DisplayIndex, Converter={StaticResource IndexToColorConverter}, ConverterParameter='TextColor'}" />
                                         <BoxView WidthRequest="1" 
                                                  BackgroundColor="#777777" 
                                                  HorizontalOptions="End" 
@@ -368,7 +368,7 @@
                                                LineBreakMode="TailTruncation"
                                                VerticalOptions="Center"
                                                Margin="10,10"
-                                               TextColor="{Binding ., Converter={StaticResource AlternatingRowColorConverter}, ConverterParameter='TextColor'}" />
+                                               TextColor="{Binding DisplayIndex, Converter={StaticResource IndexToColorConverter}, ConverterParameter='TextColor'}" />
                                         <BoxView WidthRequest="1" 
                                                  BackgroundColor="#777777" 
                                                  HorizontalOptions="End" 
@@ -380,7 +380,7 @@
                                                LineBreakMode="TailTruncation"
                                                VerticalOptions="Center"
                                                Margin="10,10"
-                                               TextColor="{Binding ., Converter={StaticResource AlternatingRowColorConverter}, ConverterParameter='TextColor'}" />
+                                               TextColor="{Binding DisplayIndex, Converter={StaticResource IndexToColorConverter}, ConverterParameter='TextColor'}" />
                                         <BoxView WidthRequest="1" 
                                                  BackgroundColor="#777777" 
                                                  HorizontalOptions="End" 
@@ -392,7 +392,7 @@
                                                LineBreakMode="TailTruncation"
                                                VerticalOptions="Center"
                                                Margin="10,10"
-                                               TextColor="{Binding ., Converter={StaticResource AlternatingRowColorConverter}, ConverterParameter='TextColor'}" />
+                                               TextColor="{Binding DisplayIndex, Converter={StaticResource IndexToColorConverter}, ConverterParameter='TextColor'}" />
                                     </Grid>
 
                                     <BoxView Grid.ColumnSpan="7" 
