@@ -53,6 +53,11 @@ namespace Oracle_Version_Control.ViewModels
 
         [ObservableProperty]
         private VersionedObject? _selectedObject = null;
+        partial void OnSelectedObjectChanged(VersionedObject? oldValue, VersionedObject? newValue)
+        {
+            OnPropertyChanged(nameof(CanInsertIntoControl));
+            UpdateInsertButtonColor();
+        }
 
         [ObservableProperty]
         private bool _isLoadingMore;
@@ -326,6 +331,10 @@ namespace Oracle_Version_Control.ViewModels
             foreach (DataRow row in data.Rows)
             {
                 var obj = new VersionedObject(row);
+                
+                // Debug: Log dos valores para verificação
+                System.Diagnostics.Debug.WriteLine($"Objeto: {obj.Objeto}, Status: '{obj.Status}', IsControlled: '{obj.IsControlled}', StatusDisplay: '{obj.StatusDisplay}'");
+                
                 _sourceData.Add(obj);
             }
 
@@ -446,7 +455,20 @@ namespace Oracle_Version_Control.ViewModels
                 
                 if (searchColumn == "Status")
                 {
-                    searchValue = searchValue.Contains("check", StringComparison.OrdinalIgnoreCase) ? "Y" : "N";
+                    // Converter termos de busca para valores corretos de status
+                    if (searchValue.Contains("check", StringComparison.OrdinalIgnoreCase))
+                    {
+                        searchValue = "Y";
+                    }
+                    else if (searchValue.Contains("livre", StringComparison.OrdinalIgnoreCase))
+                    {
+                        searchValue = "N";
+                    }
+                    else if (searchValue.Contains("controlado", StringComparison.OrdinalIgnoreCase) || 
+                             searchValue.Contains("não", StringComparison.OrdinalIgnoreCase))
+                    {
+                        searchValue = "Não controlado";
+                    }
                 }
 
                 var data = await _oracleService.SearchObjectsByColumnAsync(searchColumn, searchValue, CurrentSortField, SortAscending, int.MaxValue, 0);
@@ -559,27 +581,49 @@ namespace Oracle_Version_Control.ViewModels
 
             try
             {
-                var propertyInfo = typeof(VersionedObject).GetProperty(field);
                 IEnumerable<VersionedObject> sorted;
 
-                if (propertyInfo != null)
+                // Forçar tratamento customizado para certos campos
+                switch (field)
                 {
-                    sorted = SortAscending 
-                        ? _sourceData.OrderBy(o => propertyInfo.GetValue(o, null))
-                        : _sourceData.OrderByDescending(o => propertyInfo.GetValue(o, null));
-                }
-                else
-                {
-                    sorted = field switch
-                    {
-                        "Objeto" => SortAscending ? _sourceData.OrderBy(o => o.Objeto) : _sourceData.OrderByDescending(o => o.Objeto),
-                        "ObjectType" => SortAscending ? _sourceData.OrderBy(o => o.ObjectType) : _sourceData.OrderByDescending(o => o.ObjectType),
-                        "Status" => SortAscending ? _sourceData.OrderBy(o => o.Status) : _sourceData.OrderByDescending(o => o.Status),
-                        "Usuario" => SortAscending ? _sourceData.OrderBy(o => o.Usuario) : _sourceData.OrderByDescending(o => o.Usuario),
-                        "Checkout" => SortAscending ? _sourceData.OrderBy(o => o.Checkout) : _sourceData.OrderByDescending(o => o.Checkout),
-                        "Checkin" => SortAscending ? _sourceData.OrderBy(o => o.Checkin) : _sourceData.OrderByDescending(o => o.Checkin),
-                        _ => _sourceData
-                    };
+                    case "Status":
+                        sorted = SortAscending 
+                            ? _sourceData.OrderBy(o => o.StatusDisplay, StringComparer.CurrentCultureIgnoreCase)
+                            : _sourceData.OrderByDescending(o => o.StatusDisplay, StringComparer.CurrentCultureIgnoreCase);
+                        break;
+                    case "Checkout":
+                        sorted = SortAscending 
+                            ? _sourceData.OrderBy(o => o.Checkout)
+                            : _sourceData.OrderByDescending(o => o.Checkout);
+                        break;
+                    case "Checkin":
+                        sorted = SortAscending 
+                            ? _sourceData.OrderBy(o => o.Checkin)
+                            : _sourceData.OrderByDescending(o => o.Checkin);
+                        break;
+                    case "Objeto":
+                        sorted = SortAscending ? _sourceData.OrderBy(o => o.Objeto) : _sourceData.OrderByDescending(o => o.Objeto);
+                        break;
+                    case "ObjectType":
+                        sorted = SortAscending ? _sourceData.OrderBy(o => o.ObjectType) : _sourceData.OrderByDescending(o => o.ObjectType);
+                        break;
+                    case "Usuario":
+                        sorted = SortAscending ? _sourceData.OrderBy(o => o.Usuario) : _sourceData.OrderByDescending(o => o.Usuario);
+                        break;
+                    default:
+                        // Fallback genérico (não deve entrar para campos conhecidos)
+                        var propertyInfo = typeof(VersionedObject).GetProperty(field);
+                        if (propertyInfo != null)
+                        {
+                            sorted = SortAscending 
+                                ? _sourceData.OrderBy(o => propertyInfo.GetValue(o, null))
+                                : _sourceData.OrderByDescending(o => propertyInfo.GetValue(o, null));
+                        }
+                        else
+                        {
+                            sorted = _sourceData; // sem alteração
+                        }
+                        break;
                 }
 
                 var sortedList = sorted.ToList();
@@ -769,6 +813,49 @@ namespace Oracle_Version_Control.ViewModels
             );
         }
 
+        // Computed property: enabled only for uncontrolled objects
+        public bool CanInsertIntoControl => SelectedObject != null && (SelectedObject.IsControlled == "N" || SelectedObject.Status == "Não controlado");
+
+        [ObservableProperty]
+        private Color _insertButtonColor = Color.FromArgb("#666666");
+
+        private void UpdateInsertButtonColor()
+        {
+            bool isDarkTheme = Application.Current?.RequestedTheme == AppTheme.Dark;
+            InsertButtonColor = CanInsertIntoControl
+                ? Color.FromArgb("#FFC107")
+                : (isDarkTheme ? Color.FromArgb("#444444") : Color.FromArgb("#666666"));
+        }
+
+        [RelayCommand]
+        private async Task InsertIntoControl()
+        {
+            if (SelectedObject == null || SelectedObject.IsControlled != "N")
+            {
+                SetStatusMessage("Selecione um objeto não controlado.", Colors.Red);
+                return;
+            }
+            try
+            {
+                IsBusy = true;
+                SetStatusMessage("Inserindo no controle...", Colors.Gray);
+                await _oracleService.InsertObjectIntoControlAsync(SelectedObject.Objeto, SelectedObject.ObjectType);
+                SetStatusMessage("Objeto inserido no controle.", Color.FromArgb("#FFD600"), 2000);
+                var reselectName = SelectedObject.Objeto;
+                SelectedObject = null; // limpa seleção para desabilitar botão
+                await ReloadObjects();
+            }
+            catch (Exception ex)
+            {
+                SetStatusMessage($"Erro ao inserir: {ex.Message}", Colors.Red);
+            }
+            finally
+            {
+                UpdateInsertButtonColor();
+                IsBusy = false;
+            }
+        }
+
         [RelayCommand]
         private void SelectObject(VersionedObject obj)
         {
@@ -779,8 +866,16 @@ namespace Oracle_Version_Control.ViewModels
             Comment = obj.Comments;
             SelectedObjectType = obj.ObjectType;
            
-            CanCheckin = obj.Status == "Y" && obj.Usuario.ToUpper() == CurrentUser;
-            CanCheckout = obj.Status != "Y";
+            if (obj.IsControlled == "N" || obj.Status == "Não controlado")
+            {
+                CanCheckin = false;
+                CanCheckout = false;
+            }
+            else
+            {
+                CanCheckin = obj.Status == "Y" && obj.Usuario.ToUpper() == CurrentUser;
+                CanCheckout = obj.Status != "Y";
+            }
 
             bool isDarkTheme = Application.Current?.RequestedTheme == AppTheme.Dark;
 
@@ -791,23 +886,22 @@ namespace Oracle_Version_Control.ViewModels
             CheckinButtonColor = CanCheckin 
                 ? Color.FromArgb("#F44336")
                 : (isDarkTheme ? Color.FromArgb("#444444") : Color.FromArgb("#CCCCCC"));
+
+            InsertButtonColor = CanInsertIntoControl
+                ? Color.FromArgb("#FFC107")
+                : (isDarkTheme ? Color.FromArgb("#444444") : Color.FromArgb("#666666"));
         }
 
         private void UpdateSortFieldDisplay()
         {
             string cacheKey = $"SortDisplay_{CurrentSortField}_{SortAscending}";
-
             CurrentSortFieldDisplay = GetOrCalculate(cacheKey, () =>
             {
                 string fieldName = SortFields.TryGetValue(CurrentSortField, out string name) ? name : CurrentSortField;
                 return $"{fieldName} ({(SortAscending ? "asc" : "desc")})";
             });
+
+            UpdateInsertButtonColor();
         }
-
-        [RelayCommand]
-        private void ShowSortPopup() => IsSortPopupVisible = true;
-
-        [RelayCommand]
-        private void CloseSortPopup() => IsSortPopupVisible = false;
     }
 }

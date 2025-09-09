@@ -801,7 +801,7 @@
 
                 <Grid Grid.Row="2" 
                       Margin="0,10,0,0"
-                      ColumnDefinitions="*,*,*,*">
+                      ColumnDefinitions="*,*,*,*,*">
                     <Button x:Name="CheckoutButton"
                             Grid.Column="0" 
                             Text="Check-out" 
@@ -810,7 +810,7 @@
                             TextColor="White"
                             CornerRadius="5"
                             IsEnabled="{Binding CanCheckout}"
-                            Margin="0,0,5,0"/>
+                            Margin="0,0,2,0"/>
 
                     <Button x:Name="CheckinButton"
                             Grid.Column="1" 
@@ -820,25 +820,35 @@
                             TextColor="White"
                             CornerRadius="5"
                             IsEnabled="{Binding CanCheckin}"
-                            Margin="5,0"/>
+                            Margin="2,0"/>
+
+                    <Button x:Name="InsertControlButton"
+                            Grid.Column="2" 
+                            Text="Inserir"
+                            Command="{Binding InsertIntoControlCommand}"
+                            BackgroundColor="{Binding InsertButtonColor}"
+                            TextColor="Black"
+                            CornerRadius="5"
+                            IsEnabled="{Binding CanInsertIntoControl}"
+                            Margin="2,0"/>
 
                     <Button x:Name="DownloadButton"
-                            Grid.Column="2"
+                            Grid.Column="3"
                             Text="Download"
                             Command="{Binding DownloadObjectCommand}"
                             BackgroundColor="#2196F3"
                             TextColor="White"
                             CornerRadius="5"
-                            Margin="5,0"/>
+                            Margin="2,0"/>
 
                     <Button x:Name="LogoutButton"
-                            Grid.Column="3" 
+                            Grid.Column="4" 
                             Text="Sair" 
                             Command="{Binding LogoutCommand}"
                             BackgroundColor="#607D8B"
                             TextColor="White"
                             CornerRadius="5"
-                            Margin="5,0,0,0"/>
+                            Margin="2,0,0,0"/>
                 </Grid>
             </Grid>
         </Frame>

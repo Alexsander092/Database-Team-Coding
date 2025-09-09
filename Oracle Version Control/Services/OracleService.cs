@@ -149,17 +149,48 @@ public class OracleService
     {
         await EnsureConnected();
         
-        string sql = 
-            @"SELECT 
-                PSL_OBJECT_NAME AS Objeto,
-                PSL_OBJECT_TYPE AS ObjectType,
-                PSL_CHECKED_OUT AS Status,
-                PSL_CHECKED_OUT_BY AS Usuario,
-                TO_CHAR(PSL_CHECK_OUT_TIMESTAMP, 'DD/MM/YYYY HH24:MI') AS Checkout,
-                TO_CHAR(PSL_CHECK_IN_TIMESTAMP, 'DD/MM/YYYY HH24:MI') AS Checkin,
-                PSL_COMMENTS AS Comments
-            FROM toad.tc_objstatus
-            WHERE UPPER(PSL_OBJECT_NAME) = UPPER(:objName)";
+        string sql = @"SELECT 
+                Objeto,
+                ObjectType,
+                Status,
+                Usuario,
+                Checkout,
+                Checkin,
+                Comments,
+                IsControlled
+            FROM (
+                SELECT 
+                    PSL_OBJECT_NAME AS Objeto,
+                    PSL_OBJECT_TYPE AS ObjectType,
+                    PSL_CHECKED_OUT AS Status,
+                    PSL_CHECKED_OUT_BY AS Usuario,
+                    TO_CHAR(PSL_CHECK_OUT_TIMESTAMP, 'DD/MM/YYYY HH24:MI') AS Checkout,
+                    TO_CHAR(PSL_CHECK_IN_TIMESTAMP, 'DD/MM/YYYY HH24:MI') AS Checkin,
+                    PSL_COMMENTS AS Comments,
+                    'Y' AS IsControlled
+                FROM toad.tc_objstatus
+                WHERE UPPER(PSL_OBJECT_NAME) = UPPER(:objName)
+                  AND UPPER(PSL_OBJECT_TYPE) IN ('PACKAGE','PACKAGE BODY','PROCEDURE','FUNCTION','TRIGGER','VIEW','TYPE','TYPE BODY')
+                UNION ALL
+                SELECT 
+                    ao.object_name AS Objeto,
+                    ao.object_type AS ObjectType,
+                    'Não controlado' AS Status,
+                    ' ' AS Usuario,
+                    '01/01/1900 00:00' AS Checkout,
+                    '01/01/1900 00:00' AS Checkin,
+                    ' ' AS Comments,
+                    'N' AS IsControlled
+                FROM all_objects ao
+                WHERE ao.object_type IN ('PACKAGE', 'PACKAGE BODY', 'PROCEDURE', 'FUNCTION', 'TRIGGER', 'VIEW', 'TYPE', 'TYPE BODY')
+                  AND ao.owner IN ('E2DESENV')
+                  AND UPPER(ao.object_name) = UPPER(:objName)
+                  AND NOT EXISTS (
+                        SELECT 1 FROM toad.tc_objstatus t 
+                        WHERE upper(t.PSL_OBJECT_NAME) = upper(ao.object_name)
+                          AND upper(t.PSL_OBJECT_TYPE) = upper(ao.object_type)
+                  )
+            )";
         
         var parameters = new Dictionary<string, object>
         {
@@ -190,18 +221,18 @@ public class OracleService
     {
         await EnsureConnected();
         
-        string sql = 
-            @"SELECT 
+        string sql = @"SELECT 
                 PSL_OBJECT_NAME AS Objeto,
                 PSL_OBJECT_TYPE AS ObjectType,
                 PSL_CHECKED_OUT AS Status,
                 PSL_CHECKED_OUT_BY AS Usuario,
                 TO_CHAR(PSL_CHECK_OUT_TIMESTAMP, 'DD/MM/YYYY HH24:MI') AS Checkout,
                 TO_CHAR(PSL_CHECK_IN_TIMESTAMP, 'DD/MM/YYYY HH24:MI') AS Checkin,
-                PSL_COMMENTS AS Comments
+                PSL_COMMENTS AS Comments,
+                'Y' AS IsControlled
             FROM toad.tc_objstatus
             WHERE UPPER(PSL_CHECKED_OUT_BY) = UPPER(:userName)
-            AND PSL_CHECKED_OUT = 'Y'
+              AND PSL_CHECKED_OUT = 'Y'
             ORDER BY PSL_CHECK_OUT_TIMESTAMP DESC";
         
         var parameters = new Dictionary<string, object>
@@ -224,17 +255,10 @@ public class OracleService
         using var da = new OracleDataAdapter(cmd);
         var dt = new DataTable();
         
-        try
-        {
-            await Task.Run(() => da.Fill(dt));
-            _lastQueryHash = queryHash;
-            _lastQueryResultCache = dt;
-            return dt;
-        }
-        catch (Exception)
-        {
-            throw;
-        }
+        await Task.Run(() => da.Fill(dt));
+        _lastQueryHash = queryHash;
+        _lastQueryResultCache = dt;
+        return dt;
     }
 
     public async Task<DataTable> SearchObjectsAsync(string searchTerm, string sortField, bool ascending, int maxRows = 50, int startRow = 0)
@@ -247,15 +271,45 @@ public class OracleService
         string sql = $@"SELECT * FROM (
             SELECT a.*, ROWNUM rnum FROM (
                 SELECT 
-                    PSL_OBJECT_NAME AS Objeto,
-                    PSL_OBJECT_TYPE AS ObjectType,
-                    PSL_CHECKED_OUT AS Status,
-                    PSL_CHECKED_OUT_BY AS Usuario,
-                    TO_CHAR(PSL_CHECK_OUT_TIMESTAMP, 'DD/MM/YYYY HH24:MI') AS Checkout,
-                    TO_CHAR(PSL_CHECK_IN_TIMESTAMP, 'DD/MM/YYYY HH24:MI') AS Checkin,
-                    PSL_COMMENTS AS Comments
-                FROM toad.tc_objstatus
-                WHERE UPPER(PSL_OBJECT_NAME) LIKE '%' || UPPER(:search) || '%'
+                    Objeto,
+                    ObjectType,
+                    Status,
+                    Usuario,
+                    Checkout,
+                    Checkin,
+                    Comments,
+                    IsControlled
+                FROM (
+                    SELECT 
+                        PSL_OBJECT_NAME AS Objeto,
+                        PSL_OBJECT_TYPE AS ObjectType,
+                        PSL_CHECKED_OUT AS Status,
+                        PSL_CHECKED_OUT_BY AS Usuario,
+                        TO_CHAR(PSL_CHECK_OUT_TIMESTAMP, 'DD/MM/YYYY HH24:MI') AS Checkout,
+                        TO_CHAR(PSL_CHECK_IN_TIMESTAMP, 'DD/MM/YYYY HH24:MI') AS Checkin,
+                        PSL_COMMENTS AS Comments,
+                        'Y' AS IsControlled
+                    FROM toad.tc_objstatus
+                    UNION ALL
+                    SELECT 
+                        ao.object_name AS Objeto,
+                        ao.object_type AS ObjectType,
+                        'Não controlado' AS Status,
+                        ' ' AS Usuario,
+                        '01/01/1900 00:00' AS Checkout,
+                        '01/01/1900 00:00' AS Checkin,
+                        ' ' AS Comments,
+                        'N' AS IsControlled
+                    FROM all_objects ao
+                    WHERE ao.object_type IN ('PACKAGE', 'PACKAGE BODY', 'PROCEDURE', 'FUNCTION', 'TRIGGER', 'VIEW', 'TYPE', 'TYPE BODY')
+                      AND ao.owner IN ('E2DESENV')
+                      AND NOT EXISTS (
+                            SELECT 1 FROM toad.tc_objstatus t 
+                            WHERE upper(t.PSL_OBJECT_NAME) = upper(ao.object_name)
+                              AND upper(t.PSL_OBJECT_TYPE) = upper(ao.object_type)
+                      )
+                ) combined_results
+                WHERE UPPER(Objeto) LIKE '%' || UPPER(:search) || '%'
                 ORDER BY {dbField} {sortDirection}
             ) a WHERE ROWNUM <= :maxRow
         ) WHERE rnum > :startRow";
@@ -286,24 +340,10 @@ public class OracleService
         using var da = new OracleDataAdapter(cmd);
         var dt = new DataTable();
         
-        try
-        {
-            await Task.Run(() => da.Fill(dt));
-            _lastQueryHash = queryHash;
-            _lastQueryResultCache = dt;
-            return dt;
-        }
-        catch (Exception)
-        {
-            throw;
-        }
-        finally
-        {
-            if (!_commandCache.Values.Contains(cmd))
-            {
-                cmd.Dispose();
-            }
-        }
+        await Task.Run(() => da.Fill(dt));
+        _lastQueryHash = queryHash;
+        _lastQueryResultCache = dt;
+        return dt;
     }
 
     public async Task<DataTable> SearchObjectsByColumnAsync(string column, string searchTerm, string sortField, bool ascending, int maxRows = 50, int startRow = 0)
@@ -314,38 +354,64 @@ public class OracleService
         string sortDirection = ascending ? "ASC" : "DESC";
         string dbSearchField = column switch
         {
-            "Objeto" => "PSL_OBJECT_NAME",
-            "ObjectType" => "PSL_OBJECT_TYPE",
-            "Status" => "PSL_CHECKED_OUT",
-            "Usuario" => "PSL_CHECKED_OUT_BY",
-            "Comments" => "PSL_COMMENTS",
-            _ => "PSL_OBJECT_NAME"
+            "Objeto" => "Objeto",
+            "ObjectType" => "ObjectType", 
+            "Status" => "Status",
+            "Usuario" => "Usuario",
+            "Comments" => "Comments",
+            _ => "Objeto"
         };
 
         string whereClause = "1=1";
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
-            if (dbSearchField == "PSL_CHECKED_OUT")
-            {
+            if (dbSearchField == "Status")
                 whereClause = $"{dbSearchField} = :search";
-            }
             else
-            {
                 whereClause = $"UPPER({dbSearchField}) LIKE '%' || UPPER(:search) || '%'";
-            }
         }
 
         string sql = $@"SELECT * FROM (
             SELECT a.*, ROWNUM rnum FROM (
                 SELECT 
-                    PSL_OBJECT_NAME AS Objeto,
-                    PSL_OBJECT_TYPE AS ObjectType,
-                    PSL_CHECKED_OUT AS Status,
-                    PSL_CHECKED_OUT_BY AS Usuario,
-                    TO_CHAR(PSL_CHECK_OUT_TIMESTAMP, 'DD/MM/YYYY HH24:MI') AS Checkout,
-                    TO_CHAR(PSL_CHECK_IN_TIMESTAMP, 'DD/MM/YYYY HH24:MI') AS Checkin,
-                    PSL_COMMENTS AS Comments
-                FROM toad.tc_objstatus
+                    Objeto,
+                    ObjectType,
+                    Status,
+                    Usuario,
+                    Checkout,
+                    Checkin,
+                    Comments,
+                    IsControlled
+                FROM (
+                    SELECT 
+                        PSL_OBJECT_NAME AS Objeto,
+                        PSL_OBJECT_TYPE AS ObjectType,
+                        PSL_CHECKED_OUT AS Status,
+                        PSL_CHECKED_OUT_BY AS Usuario,
+                        TO_CHAR(PSL_CHECK_OUT_TIMESTAMP, 'DD/MM/YYYY HH24:MI') AS Checkout,
+                        TO_CHAR(PSL_CHECK_IN_TIMESTAMP, 'DD/MM/YYYY HH24:MI') AS Checkin,
+                        PSL_COMMENTS AS Comments,
+                        'Y' AS IsControlled
+                    FROM toad.tc_objstatus
+                    UNION ALL
+                    SELECT 
+                        ao.object_name AS Objeto,
+                        ao.object_type AS ObjectType,
+                        'Não controlado' AS Status,
+                        ' ' AS Usuario,
+                        '01/01/1900 00:00' AS Checkout,
+                        '01/01/1900 00:00' AS Checkin,
+                        ' ' AS Comments,
+                        'N' AS IsControlled
+                    FROM all_objects ao
+                    WHERE ao.object_type IN ('PACKAGE', 'PACKAGE BODY', 'PROCEDURE', 'FUNCTION', 'TRIGGER', 'VIEW', 'TYPE', 'TYPE BODY')
+                      AND ao.owner IN ('E2DESENV')
+                      AND NOT EXISTS (
+                            SELECT 1 FROM toad.tc_objstatus t 
+                            WHERE upper(t.PSL_OBJECT_NAME) = upper(ao.object_name)
+                              AND upper(t.PSL_OBJECT_TYPE) = upper(ao.object_type)
+                      )
+                ) combined_results
                 WHERE {whereClause}
                 ORDER BY {dbField} {sortDirection}
             ) a WHERE ROWNUM <= :maxRow
@@ -375,40 +441,24 @@ public class OracleService
 
         using var da = new OracleDataAdapter(cmd);
         var dt = new DataTable();
-        try
-        {
-            await Task.Run(() => da.Fill(dt));
-            _lastQueryHash = queryHash;
-            _lastQueryResultCache = dt;
-            return dt;
-        }
-        catch (Exception)
-        {
-            throw;
-        }
-        finally
-        {
-            if (!_commandCache.Values.Contains(cmd))
-            {
-                cmd.Dispose();
-            }
-        }
+        await Task.Run(() => da.Fill(dt));
+        _lastQueryHash = queryHash;
+        _lastQueryResultCache = dt;
+        return dt;
     }
 
     private string MapSortFieldToDatabaseField(string sortField)
     {
-        string dbField = sortField switch
+        return sortField switch
         {
-            "Objeto" => "PSL_OBJECT_NAME",
-            "ObjectType" => "PSL_OBJECT_TYPE",
-            "Status" => "PSL_CHECKED_OUT",
-            "Usuario" => "PSL_CHECKED_OUT_BY",
-            "Checkout" => "PSL_CHECK_OUT_TIMESTAMP",
-            "Checkin" => "PSL_CHECK_IN_TIMESTAMP",
-            _ => "PSL_CHECK_IN_TIMESTAMP" 
+            "Objeto" => "Objeto",
+            "ObjectType" => "ObjectType",
+            "Status" => "Status",
+            "Usuario" => "Usuario",
+            "Checkout" => "Checkout",
+            "Checkin" => "Checkin",
+            _ => "Checkin"
         };
-        
-        return dbField;
     }
 
     private string MapAppObjectTypeToDbmsMetadata(string appType)
@@ -423,10 +473,6 @@ public class OracleService
             "TYPE" => "TYPE",
             "TYPE BODY" => "TYPE_BODY",
             "VIEW" => "VIEW",
-            "PACKAGEBODY" => "PACKAGE_BODY",
-            "PACKAGE_BODY" => "PACKAGE_BODY",
-            "TYPEBODY" => "TYPE_BODY",
-            "TYPE_BODY" => "TYPE_BODY",
             var t when t.Contains("PACKAGE") && t.Contains("BODY") => "PACKAGE_BODY",
             var t when t.Contains("TYPE") && t.Contains("BODY") => "TYPE_BODY",
             _ => appType.Trim().ToUpperInvariant()
@@ -450,5 +496,19 @@ public class OracleService
             return reader["full_text"]?.ToString();
         }
         return null;
+    }
+
+    public async Task InsertObjectIntoControlAsync(string objectName, string objectType)
+    {
+        await EnsureConnected();
+        using var cmd = new OracleCommand("VSC_E2.INSERENOCONTROLE", _connection)
+        {
+            CommandType = CommandType.StoredProcedure,
+            CommandTimeout = COMMAND_TIMEOUT
+        };
+        cmd.Parameters.Add("nomeObjeto", OracleDbType.Varchar2).Value = objectName;
+        cmd.Parameters.Add("tipoObjeto", OracleDbType.Varchar2).Value = objectType;
+        await cmd.ExecuteNonQueryAsync();
+        _lastQueryResultCache = null;
     }
 }
